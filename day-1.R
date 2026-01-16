@@ -15,22 +15,22 @@ airquality %<>%
 airquality
 
 ## plot the data
-p_0 <-
+p_aq <-
   ggplot(airquality, aes(date, temp)) +
   geom_point(alpha = 0.75) +
   labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
-p_0
+p_aq
 
 ## plot the data with a smooth model
-p_0 + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
+p_aq + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
                   formula = y ~ s(x, k = 5))
 
 ## plot the data with a wiggly model
-p_0 + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
+p_aq + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
                   formula = y ~ s(x, k = 50), n = 400)
 
 ## plot the data with an extremely wiggly model
-p_0 + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
+p_aq + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
                   formula = y ~ s(x, k = nrow(airquality) - 1), n = 400,
                   method.args = list(gamma = 0.00001))
 
@@ -313,7 +313,19 @@ d_track %>%
 
 # TODO: continue here
 
+p_aq
 airquality
+
+m_aq <- mvgam(temp ~ s(doy), data = airquality)
+
+plot(m_aq, type = 'series') #' time series diagnostics; == `plot_mvgam_series()`
+plot(m_aq, type = 'residuals') #' model diagnostics; == `plot_mvgam_resids()`
+plot(m_aq, type = 'smooths') #' model terms; == `plot_mvgam_smooth()`
+
+plot(hindcast(m_aq, type = 'response'))
+plot(hindcast(m_aq, type = 'link'))
+plot(hindcast(m_aq, type = 'expected'))
+
 
 ##' **break**
 
