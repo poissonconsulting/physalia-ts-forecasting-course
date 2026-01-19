@@ -3,36 +3,37 @@ source('packages.R') # attach necessary packages
 ## Introduction to time series and time series visualization ----
 ## a simple time series: daily temperature values
 data('airquality')
-?airquality
-head(airquality) #' *NOTE:* temperature is in Fahrenheit degrees
+?aq
+head(aq) #' *NOTE:* temperature is in Fahrenheit degrees
 
 ## clean up the data format
-airquality %<>%
+aq %<>%
   janitor::clean_names() %>% # convert to snake_case
   mutate(date = as_date(paste0('1973-', month, '-', day)),
          doy = yday(date)) %>%
+  select(temp, month,day, date, doy) %>%
   as_tibble()
-airquality
+aq
 
 ## plot the data
 p_aq <-
-  ggplot(airquality, aes(date, temp)) +
+  ggplot(aq, aes(date, temp)) +
   geom_point(alpha = 0.75) +
   labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
 p_aq
 
 ## plot the data with a smooth model
 p_aq + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
-                  formula = y ~ s(x, k = 5))
+                   formula = y ~ s(x, k = 5))
 
 ## plot the data with a wiggly model
 p_aq + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
-                  formula = y ~ s(x, k = 50), n = 400)
+                   formula = y ~ s(x, k = 50), n = 400)
 
 ## plot the data with an extremely wiggly model
 p_aq + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
-                  formula = y ~ s(x, k = nrow(airquality) - 1), n = 400,
-                  method.args = list(gamma = 0.00001))
+                   formula = y ~ s(x, k = nrow(aq) - 1), n = 400,
+                   method.args = list(gamma = 0.00001))
 
 #' *questions:*
 #' - which model is better?
@@ -210,13 +211,13 @@ plot_process(ar = c(0.7, 0.2), ma = c(0.5, 0.3)) # stationary ARMA(2, 2)
 
 ## applying the plots to the air temperature series ----
 layout(t(1:2))
-acf(airquality$temp) #' correlation of data pairs at a times `t` and `t+Lag`
-pacf(airquality$temp) #' correl. between pairs, without previous lags' effects
+acf(aq$temp) #' correlation of data pairs at a times `t` and `t+Lag`
+pacf(aq$temp) #' correl. between pairs, without previous lags' effects
 ## ACF decays smoothly; high pacf value at lag 1, other values are small
 ## AR(1) model is a good start
 
 ##' `y_t = 0.82 * y_{t-1} + 77.33`
-m_ar_temp <- arima(airquality$temp, order = c(1, 0, 0))
+m_ar_temp <- arima(aq$temp, order = c(1, 0, 0))
 coef(m_ar_temp)
 acf(resid(m_ar_temp)); pacf(resid(m_ar_temp)) # residuals are ok
 
