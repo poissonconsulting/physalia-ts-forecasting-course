@@ -3,15 +3,16 @@ source('packages.R') # attach necessary packages
 ## Introduction to time series and time series visualization ----
 ## a simple time series: daily temperature values
 data('airquality')
-?aq
-head(aq) #' *NOTE:* temperature is in Fahrenheit degrees
+?airquality
+head(airquality) #' *NOTE:* temperature is in Fahrenheit degrees
 
 ## clean up the data format
-aq %<>%
+aq <- airquality %>%
   janitor::clean_names() %>% # convert to snake_case
   mutate(date = as_date(paste0('1973-', month, '-', day)),
-         doy = yday(date)) %>%
-  select(temp, month,day, date, doy) %>%
+         doy = yday(date),
+         week_re = factor(week(date))) %>%
+  select(temp, month, date, doy, week_re) %>%
   as_tibble()
 aq
 
@@ -290,7 +291,8 @@ ggplot(d_track, aes(sampling_interval, mean_speed)) +
   labs(x = 'Sampling interval (seconds)', y = 'Mean speed (m/s)')
 
 ## ... which is not surprising since we are losing data on the complexity of the
-## tracks as we thin them. for more info, see:
+## tracks as we thin them. the issues compound if sampling intervals are
+## irregular. for more info, see:
 ## - https://doi.org/10.1186/s40462-019-0177-1
 ## - https://doi.org/10.1086/675504
 ## - https://doi.org/10.1101/2025.07.17.665364
@@ -310,26 +312,134 @@ d_track %>%
 
 ##' **break**
 
-# GLMs and GAMs for ecological modelling ----
+## GLMs and GAMs for ecological modelling ----
 
-# TODO: continue here
+## how can we model data with irregular sampling over time?
+##' *NOTE:* many of the `{mvgam}` plots assume discrete-time sampling, so the
+##' missing observations should be `NA` rather than missing the full row, as
+##' long as none of the predictors have `NA` values.
+aq_missing <- aq %>%
+  mutate(time = 1:n()) %>%
+  mutate(temp = if_else(month(date) == 6, NA_real_, temp),
+         temp = if_else(time %in% sample(time, size = n() / 2), NA_real_, temp)) %>%
+  arrange(date)
 
-p_aq
-airquality
+ggplot(aq_missing, aes(date, temp)) +
+  geom_point(alpha = 0.75) +
+  labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
 
-m_aq <- mvgam(temp ~ s(doy), data = airquality)
+## focus on rates of change and trends over time rather than changes over steps
+## in discrete time
 
-plot(m_aq, type = 'series') #' time series diagnostics; == `plot_mvgam_series()`
-plot(m_aq, type = 'residuals') #' model diagnostics; == `plot_mvgam_resids()`
-plot(m_aq, type = 'smooths') #' model terms; == `plot_mvgam_smooth()`
+##' fitting a *GLM* with a polynomial term
+##' The terms can't be functions of each other, so we need to add columns of the
+##' polynomial that are independent of each other (i.e., orthogonal) to avoid
+##' complete collinearity and non-identifiability issues when fitting.
+aq_missing <- aq_missing %>%
+  bind_cols(.,
+            poly(.$doy, degree = 3) %>%
+              as.data.frame() %>%
+              rename(doy_1 = 1, doy_2 = 2, doy_3 = 3))
+aq_missing ##' note the `NA`s in the `temp` column
 
-plot(hindcast(m_aq, type = 'response'))
-plot(hindcast(m_aq, type = 'link'))
-plot(hindcast(m_aq, type = 'expected'))
+m_aq_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
+                   family = gaussian(), ##' *NOTE:* default family is Poisson
+                   data = aq_missing)
 
+##' since `{mvgam}` fits Bayesian models with `Stan`, we should check that all
+##' chains converged properly: check `Rhat`, `n_eff`, and Stan MCMC diagnostics
+summary(m_aq_poly)
+plot(m_aq_poly, type = 'residuals') #' model diagnostics == `plot_mvgam_resids()`
+
+## can add predictions to the data...
+aq_missing %>%
+  bind_cols(predict(m_aq_poly, type = 'response') %>%
+              as.data.frame() %>%
+              rename(est_poly = Estimate,
+                     se_poly = Est.Error,
+                     q2.5_poly = Q2.5,
+                     q97.5_poly = Q97.5))
+
+## ... but there are also many useful built-in functions
+plot(hindcast(m_aq_poly, type = 'response')) # response scale; uncertainty in Y
+plot(hindcast(m_aq_poly, type = 'link')) # link scale; uncertainty in the mu
+plot(hindcast(m_aq_poly, type = 'expected')) # response scale; uncertainty in mu
+plot(m_aq_poly, type = 'smooths') # only works with GAMs (see below)
+
+##' fitting a *GAM* with a smooth term
+##' the smooth term is created using the `s()` function
+##' greater model complexity requires a bit more sampling and burnin
+m_aq_gam <- mvgam(temp ~ s(doy, k = 10, bs = 'cr'),
+                  family = gaussian(), data = aq_missing,
+                  parallel = TRUE, burnin = 1e3, samples = 750,
+                  control = list(max_treedepth = 10, adapt_delta = 0.9))
+
+##' `summary()` looks a bit different from the one for the GLM:
+##' - `s(doy)` has `k - 1` coefficients
+##' - each coefficient is multiplied by the respective basis function
+summary(m_aq_gam)
+coef(m_aq_gam$mgcv_model) # model coeffients
+coef(m_aq_gam$mgcv_model)[-1] # drop intercept term
+
+#' visualize the cubic basis
+draw(basis(s(doy, bs = 'cr'), data = aq_missing)) # default cubic basis
+draw(basis(s(doy, bs = 'cr'), data = aq_missing, coefficients = 1:9,
+           constraints = TRUE))
+draw(basis(s(doy, bs = 'cr'), data = aq_missing, # default basis * coefs
+           coefficients = coef(m_aq_gam$mgcv_model)[-1], 
+           constraints = TRUE))
+draw(basis(m_aq_gam$mgcv_model)) & # fitted cubic basis
+  geom_line(aes(doy, .fitted - coef(m_aq_gam$mgcv_model)[1]),
+            fitted_values(m_aq_gam$mgcv_model), lwd = 1,
+            inherit.aes = FALSE)
+plot(hindcast(m_aq_gam, type = 'response')) # response scale; uncertainty in Y
+plot(hindcast(m_aq_gam, type = 'link')) # link scale; uncertainty in the mu
+plot(hindcast(m_aq_gam, type = 'expected')) # response scale; uncertainty in mu
+
+##' smooths are centered at 0
+plot(m_aq_gam, type = 'smooths') #' model terms; == `plot_mvgam_smooth()`
+
+plot(m_aq_gam, type = 'residuals') #' model diagnostics; == `plot_mvgam_resids()`
 
 ##' **break**
 
 # Temporal random effects and temporal residual correlation structures ----
+## fit a GAM with a random effect of week
+aq_missing <- aq_missing
 
+ggplot(aq_missing) + geom_point(aes(week_re, temp), alpha = 0.3)
 
+m_aq_re <- mvgam(temp ~ s(week_re, bs = 're'), family = gaussian(),
+                 data = aq_missing, parallel = TRUE, silent = 2)
+summary(m_aq_re)
+draw(m_aq_re$mgcv_model)
+
+plot(hindcast(m_aq_re, type = 'response')) # response scale; uncertainty in Y
+
+##' *Q:* how do we choose the window width? is 2 weeks or 10 days better than 7?
+
+##' smooth terms in GAMs can be thought of as a continuous version of these
+##' discrete-time random effects. The random effects in the GAMs are the basis
+##' coefficients
+plot_grid(
+  draw(basis(s(doy, bs = 'cr'), data = aq_missing)), # default cubic basis
+  draw(basis(m_aq_gam$mgcv_model), residuals = TRUE) + # fitted cubic basis
+    geom_line(aes(doy, .fitted - coef(m_aq_gam$mgcv_model)[1]),
+              fitted_values(m_aq_gam$mgcv_model), lwd = 1,
+              inherit.aes = FALSE),
+  ncol = 1)
+
+##' smooth terms are better at dealing with gaps and irregular sampling. they
+##' also don't require choosing a window size, but you do need to choose `k`.
+ggplot() +
+  geom_line(aes(doy, Estimate, color = 's(doy)'),
+            bind_cols(aq, predict(m_aq_gam, aq)),
+            lwd = 1, inherit.aes = FALSE) +
+  geom_line(aes(doy, Estimate, color = 's(week, bs = \'re\')'),
+            bind_cols(aq, predict(m_aq_re, aq)),
+            lwd = 1, inherit.aes = FALSE) +
+  geom_point(aes(doy, temp), aq_missing, alpha = 0.3, inherit.aes = FALSE) +
+  scale_color_highcontrast(name = 'Model') +
+  theme(legend.position = 'top')
+
+#' TODO: add AR() process to the GAM of `doy`
