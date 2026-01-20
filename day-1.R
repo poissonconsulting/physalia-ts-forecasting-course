@@ -7,34 +7,35 @@ data('airquality')
 head(airquality) #' *NOTE:* temperature is in Fahrenheit degrees
 
 ## clean up the data format
-aq <- airquality %>%
+d_temp <- airquality %>%
   janitor::clean_names() %>% # convert to snake_case
   mutate(date = as_date(paste0('1973-', month, '-', day)),
          doy = yday(date),
-         week_re = factor(week(date))) %>%
-  select(temp, month, date, doy, week_re) %>%
+         week_re = factor(week(date)),
+         time = order(date)) %>% #' required for `trend_model` in `mvgam()`
+  select(temp, month, date, doy, week_re, time) %>%
   as_tibble()
-aq
+d_temp
 
 ## plot the data
-p_aq <-
-  ggplot(aq, aes(date, temp)) +
+p_temp <-
+  ggplot(d_temp, aes(date, temp)) +
   geom_point(alpha = 0.75) +
   labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
-p_aq
+p_temp
 
 ## plot the data with a smooth model
-p_aq + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
-                   formula = y ~ s(x, k = 5))
+p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
+                     formula = y ~ s(x, k = 5))
 
 ## plot the data with a wiggly model
-p_aq + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
-                   formula = y ~ s(x, k = 50), n = 400)
+p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
+                     formula = y ~ s(x, k = 50), n = 400)
 
 ## plot the data with an extremely wiggly model
-p_aq + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
-                   formula = y ~ s(x, k = nrow(aq) - 1), n = 400,
-                   method.args = list(gamma = 0.00001))
+p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
+                     formula = y ~ s(x, k = nrow(d_temp) - 1), n = 400,
+                     method.args = list(gamma = 0.00001))
 
 #' *questions:*
 #' - which model is better?
@@ -124,6 +125,7 @@ acf(d_ts$arma_11, ci = 0.99); pacf(d_ts$arma_11, ci = 0.99)
 m_arma <- arima(d_ts$ma_1, order = c(1, 0, 1))
 coef(m_arma)
 acf(resid(m_arma)); pacf(resid(m_arma))
+layout(1)
 
 ## all three models predict that the data will be stationary and centered at the
 ## intercept with some random variation over time
@@ -212,13 +214,13 @@ plot_process(ar = c(0.7, 0.2), ma = c(0.5, 0.3)) # stationary ARMA(2, 2)
 
 ## applying the plots to the air temperature series ----
 layout(t(1:2))
-acf(aq$temp) #' correlation of data pairs at a times `t` and `t+Lag`
-pacf(aq$temp) #' correl. between pairs, without previous lags' effects
+acf(d_temp$temp) #' correlation of data pairs at a times `t` and `t+Lag`
+pacf(d_temp$temp) #' correl. between pairs, without previous lags' effects
 ## ACF decays smoothly; high pacf value at lag 1, other values are small
 ## AR(1) model is a good start
 
 ##' `y_t = 0.82 * y_{t-1} + 77.33`
-m_ar_temp <- arima(aq$temp, order = c(1, 0, 0))
+m_ar_temp <- arima(d_temp$temp, order = c(1, 0, 0))
 coef(m_ar_temp)
 acf(resid(m_ar_temp)); pacf(resid(m_ar_temp)) # residuals are ok
 
@@ -318,13 +320,14 @@ d_track %>%
 ##' *NOTE:* many of the `{mvgam}` plots assume discrete-time sampling, so the
 ##' missing observations should be `NA` rather than missing the full row, as
 ##' long as none of the predictors have `NA` values.
-aq_missing <- aq %>%
+d_temp_missing <- d_temp %>%
   mutate(time = 1:n()) %>%
   mutate(temp = if_else(month(date) == 6, NA_real_, temp),
-         temp = if_else(time %in% sample(time, size = n() / 2), NA_real_, temp)) %>%
+         temp = if_else(time %in% sample(time, size = n() / 2),
+                        NA_real_, temp)) %>%
   arrange(date)
 
-ggplot(aq_missing, aes(date, temp)) +
+ggplot(d_temp_missing, aes(date, temp)) +
   geom_point(alpha = 0.75) +
   labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
 
@@ -335,25 +338,25 @@ ggplot(aq_missing, aes(date, temp)) +
 ##' The terms can't be functions of each other, so we need to add columns of the
 ##' polynomial that are independent of each other (i.e., orthogonal) to avoid
 ##' complete collinearity and non-identifiability issues when fitting.
-aq_missing <- aq_missing %>%
+d_temp_missing <- d_temp_missing %>%
   bind_cols(.,
             poly(.$doy, degree = 3) %>%
               as.data.frame() %>%
               rename(doy_1 = 1, doy_2 = 2, doy_3 = 3))
-aq_missing ##' note the `NA`s in the `temp` column
+d_temp_missing ##' note the `NA`s in the `temp` column
 
-m_aq_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
-                   family = gaussian(), ##' *NOTE:* default family is Poisson
-                   data = aq_missing)
+m_temp_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
+                     family = gaussian(), ##' *NOTE:* default family is Poisson
+                     data = d_temp_missing)
 
 ##' since `{mvgam}` fits Bayesian models with `Stan`, we should check that all
 ##' chains converged properly: check `Rhat`, `n_eff`, and Stan MCMC diagnostics
-summary(m_aq_poly)
-plot(m_aq_poly, type = 'residuals') #' model diagnostics == `plot_mvgam_resids()`
+summary(m_temp_poly)
+plot(m_temp_poly, type = 'residuals') #' model diagnostics `plot_mvgam_resids()`
 
 ## can add predictions to the data...
-aq_missing %>%
-  bind_cols(predict(m_aq_poly, type = 'response') %>%
+d_temp_missing %>%
+  bind_cols(predict(m_temp_poly, type = 'response') %>%
               as.data.frame() %>%
               rename(est_poly = Estimate,
                      se_poly = Est.Error,
@@ -361,60 +364,61 @@ aq_missing %>%
                      q97.5_poly = Q97.5))
 
 ## ... but there are also many useful built-in functions
-plot(hindcast(m_aq_poly, type = 'response')) # response scale; uncertainty in Y
-plot(hindcast(m_aq_poly, type = 'link')) # link scale; uncertainty in the mu
-plot(hindcast(m_aq_poly, type = 'expected')) # response scale; uncertainty in mu
-plot(m_aq_poly, type = 'smooths') # only works with GAMs (see below)
+plot(hindcast(m_temp_poly, type = 'response')) # uncertainty in Y
+plot(hindcast(m_temp_poly, type = 'link')) # uncertainty in mu on link scale
+plot(hindcast(m_temp_poly, type = 'expected')) # uncertainty in mu
+plot(m_temp_poly, type = 'smooths') # only works with GAMs (see below)
 
 ##' fitting a *GAM* with a smooth term
 ##' the smooth term is created using the `s()` function
 ##' greater model complexity requires a bit more sampling and burnin
-m_aq_gam <- mvgam(temp ~ s(doy, k = 10, bs = 'cr'),
-                  family = gaussian(), data = aq_missing,
-                  parallel = TRUE, burnin = 1e3, samples = 750,
-                  control = list(max_treedepth = 10, adapt_delta = 0.9))
+m_temp_gam <- mvgam(temp ~ s(doy, k = 10, bs = 'cr'),
+                    family = gaussian(), data = d_temp_missing,
+                    parallel = TRUE, burnin = 1e3, samples = 750,
+                    #' increase `adapt_delta` to improve sampling:
+                    #' - `max_treedepth`: max n of binary choices when sampling
+                    #' - `adapt_delta`: target average proposal acceptance prob. 
+                    control = list(max_treedepth = 10, adapt_delta = 0.9))
 
 ##' `summary()` looks a bit different from the one for the GLM:
 ##' - `s(doy)` has `k - 1` coefficients
 ##' - each coefficient is multiplied by the respective basis function
-summary(m_aq_gam)
-coef(m_aq_gam$mgcv_model) # model coeffients
-coef(m_aq_gam$mgcv_model)[-1] # drop intercept term
+summary(m_temp_gam)
+coef(m_temp_gam$mgcv_model) # model coeffients
+coef(m_temp_gam$mgcv_model)[-1] # drop intercept term
 
 #' visualize the cubic basis
-draw(basis(s(doy, bs = 'cr'), data = aq_missing)) # default cubic basis
-draw(basis(s(doy, bs = 'cr'), data = aq_missing, coefficients = 1:9,
+draw(basis(s(doy, bs = 'cr'), data = d_temp_missing)) # default cubic basis
+draw(basis(s(doy, bs = 'cr'), data = d_temp_missing, coefficients = 1:9,
            constraints = TRUE))
-draw(basis(s(doy, bs = 'cr'), data = aq_missing, # default basis * coefs
-           coefficients = coef(m_aq_gam$mgcv_model)[-1], 
+draw(basis(s(doy, bs = 'cr'), data = d_temp_missing, # default basis * coefs
+           coefficients = coef(m_temp_gam$mgcv_model)[-1], 
            constraints = TRUE))
-draw(basis(m_aq_gam$mgcv_model)) & # fitted cubic basis
-  geom_line(aes(doy, .fitted - coef(m_aq_gam$mgcv_model)[1]),
-            fitted_values(m_aq_gam$mgcv_model), lwd = 1,
+draw(basis(m_temp_gam$mgcv_model)) & # fitted cubic basis
+  geom_line(aes(doy, .fitted - coef(m_temp_gam$mgcv_model)[1]),
+            fitted_values(m_temp_gam$mgcv_model), lwd = 1,
             inherit.aes = FALSE)
-plot(hindcast(m_aq_gam, type = 'response')) # response scale; uncertainty in Y
-plot(hindcast(m_aq_gam, type = 'link')) # link scale; uncertainty in the mu
-plot(hindcast(m_aq_gam, type = 'expected')) # response scale; uncertainty in mu
+plot(hindcast(m_temp_gam, type = 'response')) # uncertainty in Y
+plot(hindcast(m_temp_gam, type = 'link')) # uncertainty in mu on link scale
+plot(hindcast(m_temp_gam, type = 'expected')) # uncertainty in mu
 
 ##' smooths are centered at 0
-plot(m_aq_gam, type = 'smooths') #' model terms; == `plot_mvgam_smooth()`
+plot(m_temp_gam, type = 'smooths') #' model terms; == `plot_mvgam_smooth()`
 
-plot(m_aq_gam, type = 'residuals') #' model diagnostics; == `plot_mvgam_resids()`
+plot(m_temp_gam, type = 'residuals') #' model diagnostics; `plot_mvgam_resids()`
 
 ##' **break**
 
 # Temporal random effects and temporal residual correlation structures ----
 ## fit a GAM with a random effect of week
-aq_missing <- aq_missing
+ggplot(d_temp_missing) + geom_point(aes(week_re, temp), alpha = 0.3)
 
-ggplot(aq_missing) + geom_point(aes(week_re, temp), alpha = 0.3)
+m_temp_re <- mvgam(temp ~ s(week_re, bs = 're'), family = gaussian(),
+                   data = d_temp_missing, parallel = TRUE, silent = 2)
+summary(m_temp_re)
+draw(m_temp_re$mgcv_model)
 
-m_aq_re <- mvgam(temp ~ s(week_re, bs = 're'), family = gaussian(),
-                 data = aq_missing, parallel = TRUE, silent = 2)
-summary(m_aq_re)
-draw(m_aq_re$mgcv_model)
-
-plot(hindcast(m_aq_re, type = 'response')) # response scale; uncertainty in Y
+plot(hindcast(m_temp_re, type = 'response')) # response scale; uncertainty in Y
 
 ##' *Q:* how do we choose the window width? is 2 weeks or 10 days better than 7?
 
@@ -422,10 +426,10 @@ plot(hindcast(m_aq_re, type = 'response')) # response scale; uncertainty in Y
 ##' discrete-time random effects. The random effects in the GAMs are the basis
 ##' coefficients
 plot_grid(
-  draw(basis(s(doy, bs = 'cr'), data = aq_missing)), # default cubic basis
-  draw(basis(m_aq_gam$mgcv_model), residuals = TRUE) + # fitted cubic basis
-    geom_line(aes(doy, .fitted - coef(m_aq_gam$mgcv_model)[1]),
-              fitted_values(m_aq_gam$mgcv_model), lwd = 1,
+  draw(basis(s(doy, bs = 'cr'), data = d_temp_missing)), # default cubic basis
+  draw(basis(m_temp_gam$mgcv_model), residuals = TRUE) + # fitted cubic basis
+    geom_line(aes(doy, .fitted - coef(m_temp_gam$mgcv_model)[1]),
+              fitted_values(m_temp_gam$mgcv_model), lwd = 1,
               inherit.aes = FALSE),
   ncol = 1)
 
@@ -433,12 +437,12 @@ plot_grid(
 ##' also don't require choosing a window size, but you do need to choose `k`.
 ggplot() +
   geom_line(aes(doy, Estimate, color = 's(doy)'),
-            bind_cols(aq, predict(m_aq_gam, aq)),
+            bind_cols(d_temp, predict(m_temp_gam, d_temp)),
             lwd = 1, inherit.aes = FALSE) +
   geom_line(aes(doy, Estimate, color = 's(week, bs = \'re\')'),
-            bind_cols(aq, predict(m_aq_re, aq)),
+            bind_cols(d_temp, predict(m_temp_re, d_temp)),
             lwd = 1, inherit.aes = FALSE) +
-  geom_point(aes(doy, temp), aq_missing, alpha = 0.3, inherit.aes = FALSE) +
+  geom_point(aes(doy, temp), d_temp_missing, alpha = 0.3, inherit.aes = FALSE) +
   scale_color_highcontrast(name = 'Model') +
   theme(legend.position = 'top')
 
