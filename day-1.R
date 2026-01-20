@@ -445,5 +445,3 @@ ggplot() +
   geom_point(aes(doy, temp), d_temp_missing, alpha = 0.3, inherit.aes = FALSE) +
   scale_color_highcontrast(name = 'Model') +
   theme(legend.position = 'top')
-
-#' TODO: add AR() process to the GAM of `doy`
