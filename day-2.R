@@ -55,11 +55,7 @@ m_gam <- mvgam(formula = passengers ~ s(dec_date, k = 30),
                control = list(max_treedepth = 20, adapt_delta = 0.9),
                parallel = TRUE)
 
-##' `{mvgam}` currently has a bug that causes it to always run diagnostics with
-##' the default `max_treedepth = 10`
 summary(m_gam)
-mvgam:::check_all_diagnostics(m_gam$model_output,
-                              max_treedepth = m_gam$max_treedepth)
 
 ## predictions for the test dataset are quite good
 plot(hindcast(m_gam))
