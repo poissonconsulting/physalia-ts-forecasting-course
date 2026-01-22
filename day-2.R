@@ -10,7 +10,7 @@ air_passengers <-
          dec_date = time(AirPassengers) %>% as.numeric(),
          year = floor(dec_date),
          month = round((dec_date - year) * 12) + 1, # to ensure January is 1
-         passengers = as.numeric(AirPassengers))
+         passengers = as.numeric(AirPassengers) * 1e3)
 air_passengers
 
 ## visualize time as a single line
