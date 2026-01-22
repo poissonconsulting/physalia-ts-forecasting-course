@@ -332,40 +332,23 @@ d_track %>%
 ##' 2. the mean-variance relationship
 ##' 3. any additional considerations about the variance, such as overdispersion
 
-?stats::family # families included in base R
-##' `binomial`: binary (0/1 data; mean is `p = P(success)`)
-##' `gaussian`: unbounded data: all real numbers (-Inf, Inf)
-##' `Gamma`: `Y > 0`; `Var(Y)` proportional to `E(Y)^2`
-##' `poisson`: count data (integers), `Y >= 0`; `Var(Y) = E(Y)`
-##' `inverse.gaussian`: `Y > 0; Var(Y) = E(Y)^3 * lambda`; rarely used
-##' `quasibinomial`: `binomial` but with over/under-dispersion parameter
-##' `quasipoisson`: `poisson` but with over/under-dispersion parameter
-
-?mgcv::family.mgcv #' families added by `{mgcv}`
-##' `tw`: between Poisson (`p=1`) and Gamma data (`p=2`); `Y >= 0`
-##' `Tweedie`: like `tw`, but `p` is specificed (`Y >= 0`)
-##' `nb`: n attempts before p successes; overdispersed poisson
-##' `negbin`: like `nb`, but scale term is specificed
-##' `betar`: ratio data (bounded [0, 1]); can also be used for NDVI
-
-##' `ocat`: ordered categorical data (e.g., small < medium < big)
-##' `scat`: scaled t data (unbounded, like Gaussian, but thicker tails)
-##' `ziP`: zero-inflated count data (e.g., counts with many zeros)
-##' `cox.ph`: cox proportional hazards (survival analysis)
-##' `multinom`: unordered categorical data (e.g., colors)
-
-##' `cnorm`, `bcg`, `clog`, `cpois`: censored data
-
-##' *multiple linear predictors (a list of formulae; require lots of data)*
-##' *location-scale (LS) are for trends in the mean-variance relationship*
-##' `mvn`: multivariate normal data (separate variances with a v-cov matrix)
-##' `gaulss`: LS Gaussian, unbounded data
-##' `gammals`: LS gamma
-##' `ziplss`: LS zero-inflated poisson
-##' `twlss`: LS tweedie
-##' `gumbls`: LS for extreme values (maxima, minima)
-##' `gevlss`: extreme values (LS; generalization of Gumbel, Fréchet, & Weibull)
-##' `shash`: extremely flexible LS generalization of normal (VERY data-hungry!)
+?mvgam::mvgam_families #' families supported by `{mvgam}`
+#' `gaussian()` for real-valued data
+#' `student_t()` for heavy-tailed real-valued data
+#' `lognormal()` for non-negative real-valued data
+#' `Gamma()` for non-negative real-valued data
+#' `betar()` for proportional data on (0,1)
+#' `bernoulli()` for binary data
+#' `poisson()` for count data
+#' `nb()` for overdispersed count data
+#' `tweedie()` for overdispersed count data (power parameter fixed at p = 1.5)
+#' `binomial()` for count data with known number of trials
+#' `beta_binomial()` for overdispersed count data with known number of trials
+#' `nmix()` for count data with imperfect detection (unknown number of trials)
+#' does not support any families that require a list of formulas
+#' if you need more flexibility, see `?mgcv::family.mgcv` and
+#' `?brms::family.brmsfit` for families supported by `{mgcv}` or `{brms}` but
+#' not necessarily supported by `{mvgam}`.
 
 ##' *choose a link function based on the support of the distribution*
 ##' unbounded: identity; `I(-Inf, Inf) = (-Inf, Inf)`
