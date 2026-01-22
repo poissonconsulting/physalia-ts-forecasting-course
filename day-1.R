@@ -494,3 +494,18 @@ ggplot() +
   geom_point(aes(doy, temp), d_temp_missing, alpha = 0.3, inherit.aes = FALSE) +
   scale_color_highcontrast(name = 'Model') +
   theme(legend.position = 'top')
+
+##' add an `AR(1)` component
+m_temp_ar <- mvgam(formula = temp ~ 0,
+                   trend_formula = ~ s(doy, k = 10, bs = 'cr'),
+                   trend_model = AR(1),
+                   family = gaussian(), data = d_temp_missing, noncentred = TRUE,
+                   parallel = TRUE, burnin = 500, samples = 1e4,
+                   control = list(max_treedepth = 20, adapt_delta = 0.99))
+
+summary(m_temp_ar) # chains are occasionally not well-mixed
+plot(m_temp_ar) # no appreciable correlations at any lags
+
+# caterpillar plot: inspect traces of paths for estimating the parameters
+mcmc_plot(m_temp_ar, type = 'trace') +
+  theme(legend.position = 'inside', legend.position.inside = c(5/6, 1/4))
