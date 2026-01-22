@@ -45,34 +45,65 @@ p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
 ## some traditional time series models and their assumptions ----
 ## traditional time series models often focus on discrete-time correlations
 ## across previous observations, e.g.: at times t -3, t - 2, and t - 1.
+## example of a time series where values correlate with the previous value
+d_ar <- tibble(t = 1:1e3, z = rnorm(length(t)),
+               zero = NA_real_, pos = NA_real_, neg = NA_real_)
+d_ar
+
+for(i in 1:nrow(d_ar)) {
+  d_ar$zero[i] <- d_ar$pos[i] <- d_ar$neg[i] <- d_ar$z[i]
+  # if not first lag, add a portion of the previous value
+  if(i > 1) {
+    d_ar$zero[i] <- d_ar$zero[i] + d_ar$zero[i - 1] * 0.0001
+    d_ar$pos[i] <- d_ar$pos[i] + d_ar$pos[i - 1] * 0.99
+    d_ar$neg[i] <- d_ar$neg[i] + d_ar$neg[i - 1] * (-0.99)
+  }
+}
+d_ar
+
+# coefficient near 0: series is similar to random noise
+ggplot(d_ar, aes(t, zero)) + geom_line(alpha = 0.5) + geom_point()
+
+# coefficient just below 1: series struggles to stay near starting point
+ggplot(d_ar, aes(t, pos)) + geom_line(alpha = 0.5) + geom_point()
+
+# coefficient just above -1: series stays near starting point; oscillates a lot
+ggplot(d_ar, aes(t, neg)) + geom_line(alpha = 0.5) + geom_point()
+
 ## diagnostics for these models are based on the Auto-Correlation Function (ACF)
-## and the Partial Auto-Correlation Function (PACF)
-## the ARIMA model is a particularly common model. it is the combination of
-## three discrete-time models:
-## AR (AutoRegressive): observations are a linear combination of previous values
-## I (Integrated): AR & MA models apply to differenced consecutive observations
-## MA (Moving Average): error terms are a linear combination of previous values
-## we won't be covering the integrated step in detail because it only requires
-## applying the models to differences of the values. The order of the
-## differences is determined by the second number in the ARIMA(a, d, m) model.
-## For example, an ARIMA(2, 1, 3) would have 2 AR coefficients, 1 difference,
-## and 3 MA coefficients. nth-order differences remove trends that are
-## approximately nth-degree polynomials: a 1st-order difference removes linear
-## trends, while a 2nd-order difference removes parabolic trends. an example of
-## a 1st-order difference is:
-air_passengers <- bind_cols(t = time(AirPassengers) %>% as.numeric(),
-                            passengers = as.numeric(AirPassengers))
-ggplot(air_passengers) +
-  geom_line(aes(t, passengers)) +
-  labs(x = 'Index', y = 'Observation')
+## and the Partial Auto-Correlation Function (PACF), which show estimated
+## correlations at different lags
+layout(matrix(1:6, ncol = 2))
+#' correlations between time points `t` and `t-l`
+acf(d_ar$zero)  # lag-1 ACF will always be 1, the rest are negligible
+acf(d_ar$pos)   # strong positive correlation with previous lags; decays w lag 
+acf(d_ar$neg)   # as above, but sign flips every lag: strong lag-1 negative coef
+#' correlations between time points after removing correlations of previous lags
+pacf(d_ar$zero) # again, no appreciable correlations
+pacf(d_ar$pos)  # strong, positive correlation at lag 1 only
+pacf(d_ar$neg)  # strong, negative correlation at lag 1 only
+layout(1)
 
-ggplot(air_passengers) +
-  geom_line(aes(t, c(NA_real_, diff(passengers)))) +
-  labs(x = 'Index', y = '1st-order difference')
+##' the *ARIMA* model is a particularly common model. it is the combination of
+##' three discrete-time models:
+##' *AR*: AutoRegressive: observations are a function of previous values
+##' *MA*: Moving Average: error terms are a linear combination of previous values
+##' *I*: Integrated: AR & MA models apply to differences of consecutive values
+##' we won't be covering the integrated model in detail because it only requires
+##' applying the models to differences of the values. The number of differences
+##' is determined by the second number in the ARIMA(a, d, m) model.
+##' For example, an `ARIMA(2, 1, 3)` would have 2 AR coefficients, 1 difference,
+##' and 3 MA coefficients. In this case, for values `y_t`, an `I(1)` model would
+##' apply the AR and MA to `z_t = y_t - y_{t-1}`. nth-order differences remove
+##' trends that are approximately nth-degree polynomials: a 1st-order difference
+##' removes linear trends, while a 2nd-order difference removes parabolic trends
+##' an example of a 1st-order difference (see `?AirPassengers` for more info):
+layout(1:2)
+plot(AirPassengers)
+plot(diff(AirPassengers))
+layout(1)
 
-#' see `?AirPassengers` for more info
-
-# some example AR, MA, and ARMA models
+# some examples of AR, MA, and ARMA models
 d_ts <- tibble(t = 1:1e3,
                w = rnorm(length(t)),
                ar_1 = if_else(t == 1, w, NA_real_), # AR(1) process
