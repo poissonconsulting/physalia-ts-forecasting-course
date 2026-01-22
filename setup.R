@@ -17,9 +17,12 @@ update.packages(ask = FALSE, checkBuilt = TRUE)
 install.packages('remotes')
 remotes::install_github('paul-buerkner/brms', dependencies = TRUE)
 
-#' install `{mvgam}` and a few other packages we will use, plus dependencies
-pkgs <- c('mvgam', 'gratia', 'tidybayes', 'dplyr', 'tidyr', 'purrr',
-          'lubridate', 'ggplot2', 'khroma', 'ctmm')
+#' install `{mvgam}`
+remotes::install_github('nicholasjclark/mvgam')
+
+#' install a few other packages we will use, plus dependencies
+pkgs <- c('gratia', 'tidybayes', 'dplyr', 'tidyr', 'purrr', 'lubridate',
+          'ggplot2', 'khroma', 'ctmm')
 install.packages(pkgs, dependencies = TRUE)
 
 #' install and check `Stan`
