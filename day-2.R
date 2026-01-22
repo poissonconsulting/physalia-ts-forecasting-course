@@ -169,7 +169,7 @@ layout(1)
 
 ##' more rigid models tend to extrapolate better, so we can decompose the trend
 ##' into `doy` and `year` trends
-m_gam_split <- mvgam(passengers ~
+m_gam_month <- mvgam(passengers ~
                        s(year, k = 9, bs = 'tp') + # k must be <= unique(year)
                        s(month, k = 10, bs = 'cc'),
                      knots = list(month = c(0.5, 12.5)), # ensures smooth cycles
@@ -182,13 +182,13 @@ m_gam_split <- mvgam(passengers ~
                      control = list(max_treedepth = 20, adapt_delta = 0.9),
                      parallel = TRUE)
 
-plot(m_gam_split, type = 'smooths')
-plot(hindcast(m_gam_split))
+plot(m_gam_month, type = 'smooths')
+plot(hindcast(m_gam_month))
 
 layout(1:3)
 plot(m_gam, type = 'forecast')
 plot(m_gam_bs, type = 'forecast')
-plot(m_gam_split, type = 'forecast') # best model
+plot(m_gam_month, type = 'forecast') # best model
 layout(1)
 
 ## assuming the seasonal cycle repeats across years allows us to reduce the
