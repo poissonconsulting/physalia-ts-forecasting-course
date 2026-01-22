@@ -1,5 +1,72 @@
 source('packages.R') # attach necessary packages
 
+##' three main parts to a GLM/GAM:
+##' 1. *family* of distributions: distribution of response, Y
+##' 2. *linear predictor*: sum of coefficients multiplied by predictor variables
+##' 3. *link function*: connects linear predictor with parameter estimates
+
+##' linear models are Gaussian GLMs:
+##' 1. family is Gaussian with mean `mu` and variance `sigma^2`
+##' 2. linear predictor is `beta_0 + x_1 * beta_1 + ...`
+##' 3. link function is the identity function: `I(c) = c`: input = output
+
+##' *fit the model to the data, not the data to the model!*
+##' choose a family of distributions and link function based on:
+##' 1. the possible values of the response variable
+##' 2. the mean-variance relationship
+##' 3. any additional considerations about the variance, such as overdispersion
+
+?stats::family # families included in base R
+##' `binomial`: binary (0/1 data; mean is `p = P(success)`)
+##' `gaussian`: unbounded data: all real numbers (-Inf, Inf)
+##' `Gamma`: `Y > 0`; `Var(Y)` proportional to `E(Y)^2`
+##' `poisson`: count data (integers), `Y >= 0`; `Var(Y) = E(Y)`
+##' `inverse.gaussian`: `Y > 0; Var(Y) = E(Y)^3 * lambda`; rarely used
+##' `quasibinomial`: `binomial` but with over/under-dispersion parameter
+##' `quasipoisson`: `poisson` but with over/under-dispersion parameter
+
+?mgcv::family.mgcv #' families added by `{mgcv}`
+##' `tw`: between Poisson (`p=1`) and Gamma data (`p=2`); `Y >= 0`
+##' `Tweedie`: like `tw`, but `p` is specificed (`Y >= 0`)
+##' `nb`: n attempts before p successes; overdispersed poisson
+##' `negbin`: like `nb`, but scale term is specificed
+##' `betar`: ratio data (bounded [0, 1]); can also be used for NDVI
+
+##' `ocat`: ordered categorical data (e.g., small < medium < big)
+##' `scat`: scaled t data (unbounded, like Gaussian, but thicker tails)
+##' `ziP`: zero-inflated count data (e.g., counts with many zeros)
+##' `cox.ph`: cox proportional hazards (survival analysis)
+##' `multinom`: unordered categorical data (e.g., colors)
+
+##' `cnorm`, `bcg`, `clog`, `cpois`: censored data
+
+##' *multiple linear predictors (a list of formulae; require lots of data)*
+##' *location-scale (LS) are for trends in the mean-variance relationship*
+##' `mvn`: multivariate normal data (separate variances with a v-cov matrix)
+##' `gaulss`: LS Gaussian, unbounded data
+##' `gammals`: LS gamma
+##' `ziplss`: LS zero-inflated poisson
+##' `twlss`: LS tweedie
+##' `gumbls`: LS for extreme values (maxima, minima)
+##' `gevlss`: extreme values (LS; generalization of Gumbel, Fréchet, & Weibull)
+##' `shash`: extremely flexible LS generalization of normal (VERY data-hungry!)
+
+##' *choose a link function based on the support of the distribution*
+##' unbounded: identity; `I(-Inf, Inf) = (-Inf, Inf)`
+##' `Y >= 0` or `Y > 0`: `log(0, Inf) = (-Inf, Inf)`
+##' `0 <= Y <= 1`: `logit(0, 1) = log(odds(0, 1)) = log(0,Inf) = (-Inf,Inf)`
+##' there are other options, but these are generally sufficient (esp. with GAMs)
+
+##' *note:* link functions introduce two new terms:
+##' - *response scale*: the original response values; e.g., (0, Inf), (0, 1)
+##' - *link scale*: the transformed response values; generally (-Inf, Inf)
+
+##' *note:* link function is applied to the *mean*, not to the data directly
+
+##' `E(Y) = mu`
+##' `g(mu) = eta = b_0 + b_1 * x_1 + b_2 * x_2`
+
+# example with count data: global number of international air passengers ----
 data('AirPassengers')
 
 AirPassengers
