@@ -74,7 +74,7 @@ draw(basis(m_gam$mgcv_model))
 ##' we can improve the predictions somewhat by extending the basis, but this
 ##' still depends on the model and the complexity of the trends...
 ##' for more info, see `https://fromthebottomoftheheap.net/2020/06/03/extrapolating-with-gams/`
-##' fit a GAM with a cubic B spline whose curvature is penalized
+##' fit a GAM with a cubic B spline whose slope is penalized
 m_gam_bs <- mvgam(formula = passengers ~ s(dec_date, k = 30, bs = 'bs',
                                            m = c(3, 1)), 
                   knots = list(dec_date = c(min(data_train$dec_date),
