@@ -10,20 +10,20 @@ air_passengers <-
          dec_date = time(AirPassengers) %>% as.numeric(),
          year = floor(dec_date),
          month = round((dec_date - year) * 12) + 1, # to ensure January is 1
-         passengers = as.numeric(AirPassengers) * 1e3)
+         passengers = as.numeric(AirPassengers)) # in thousands
 air_passengers
 
 ## visualize time as a single line
 ggplot(air_passengers, aes(dec_date, passengers)) +
   geom_line() +
-  labs(x = 'Year CE', y = 'International airline passengers')
+  labs(x = 'Year CE', y = 'International airline passengers (thousands)')
 
 ## visualize time as a repeating cycle
 ggplot(air_passengers, aes(month, passengers, group = year, color = year)) +
   facet_wrap(~ year) +
   geom_line() +
   scale_x_continuous('Month', expand = c(0, 0)) +
-  scale_y_continuous('International airline passengers')
+  scale_y_continuous('International airline passengers (thousands)')
 
 ## visualize time as a surface
 ggplot(air_passengers, aes(year, month, fill = passengers)) +
@@ -31,20 +31,21 @@ ggplot(air_passengers, aes(year, month, fill = passengers)) +
   scale_x_continuous('Year CE', expand = c(0, 0)) +
   scale_y_continuous('Month', expand = c(0, 0), breaks = 1:12,
                      labels = month.name) +
-  scale_fill_bam(name = 'International airline passengers') +
+  scale_fill_bam(name = 'International airline passengers (thousands)') +
   theme(legend.position = 'top')
 
 ## modeling ----
 ## split data into training and testing sets
 ggplot(air_passengers, aes(dec_date, passengers, lty = year > 1957)) +
   geom_line() +
-  labs(x = 'Year CE', y = 'International airline passengers') +
   scale_linetype_manual('Dataset', values = c(1, 3), labels = c('Train', 'Test'))
+  labs(x = 'Year CE', y = 'International airline passengers (thousands)') +
 
 data_train <- filter(air_passengers, year <= 1957)
 data_test <- filter(air_passengers, year > 1957)
 
 ##' fit a simple gam with `dec_date`
+##' *NOTE:* fitting times are a lot slower if passengers is multiplied by 1000
 m_gam <- mvgam(formula = passengers ~ s(dec_date, k = 30),
                family = poisson(),
                data = data_train,
