@@ -8,7 +8,7 @@ head(airquality) #' *NOTE:* temperature is in Fahrenheit degrees
 
 ## clean up the data format
 d_temp <- airquality %>%
-  janitor::clean_names() %>% # convert to snake_case
+  rename_with(stringr::str_to_snake, everything()) %>% # convert to snake_case
   mutate(date = as_date(paste0('1973-', month, '-', day)),
          doy = yday(date),
          week_re = factor(week(date)),
