@@ -22,7 +22,7 @@ remotes::install_github('nicholasjclark/mvgam')
 
 #' install a few other packages we will use, plus dependencies
 pkgs <- c('gratia', 'tidybayes', 'dplyr', 'tidyr', 'stringr', 'purrr',
-          'lubridate', 'ggplot2', 'khroma', 'ctmm')
+          'lubridate', 'ggplot2', 'khroma', 'ctmm', 'openxlsx')
 install.packages(pkgs, dependencies = TRUE)
 
 #' install and check `Stan`
