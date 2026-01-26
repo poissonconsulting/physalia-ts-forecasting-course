@@ -224,6 +224,13 @@ plot(m_gam_ar) # see values at lag-12 for ACF and pACF
 plot(m_gam_ar_12) # values at lag-12 are smaller, but lag-1 values are larger
 
 ##' how does `{mvgam}` handle many missing data?
+##' `{mvgam}` does not drop rows with `NA` response values, so it keeps track of
+##' which values are temporally adjacent. for a comparison with `{brms}` see:
+##' `https://github.com/nicholasjclark/physalia-forecasting-course/blob/main/day2/tutorial_2_physalia.html`
+##' other advantages of using `{mvgam}` over `{brms}` include:
+##' - `{mvgam}` allows each time series to have different AR1 parameters
+##' - `{mvgam}` can model the correlations among errors of each time series
+##' - `{mvgam}` can fit the dynamic processes using a State-Space approach
 data_train_missing <- data_train %>%
   mutate(passengers = if_else(1:n() %in% sample(1:n(), n() * 0.9), NA_real_,
                               passengers))
@@ -245,6 +252,7 @@ m_gam_ar_missing <-
         parallel = TRUE, silent = 2)
 
 plot(m_gam_ar_missing, type = 'forecast')
+##' `{brms}` would assume that each observation follows the previous row!
 
 ## compare to a simple GAM
 ## GAM with AR process has 
@@ -267,7 +275,7 @@ plot(forecast(m_gam_missing)) +
   geom_point(aes(time, passengers), air_passengers, color = 'white', size = 1.5) +
   geom_point(aes(time, passengers), air_passengers, color = 'black', size = 1) +
   ylim(c(0, 1e3)) +
-plot(forecast(m_gam_ar_missing)) +
+  plot(forecast(m_gam_ar_missing)) +
   geom_point(aes(time, passengers), air_passengers, color = 'white', size = 1.5) +
   geom_point(aes(time, passengers), air_passengers, color = 'black', size = 1) +
   ylim(c(0, 1e3))
