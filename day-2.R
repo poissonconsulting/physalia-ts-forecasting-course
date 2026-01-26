@@ -140,7 +140,7 @@ plot(hindcast(m_gam_month)) # predicts similar oscillations over the years
 plot(m_gam_month, type = 'smooths') #' trends decomposed into `year` and `month`
 
 #' value, slope, and curvature match at `month = 12.5 = 0.5`
-draw(m_gam_month, trend_effects = FALSE, select = 's(month)',
+draw(m_gam_month, select = 's(month)',
      data = tibble(month = seq(0, 24, by = 0.001), year = 0))
 
 layout(matrix(1:4, ncol = 2))
@@ -155,6 +155,13 @@ layout(1)
 
 # autocorrelation present at lags 1 and 12
 plot(m_gam_month)
+
+## Auger-Méthé et al. (2021; https://doi.org/10.1002/ecm.1470):
+## The assumptions that the hidden states are autocorrelated (e.g., that a large
+## population in year t will likely lead to a large population in year t + 1),
+## and that observations are independent once we account for their dependence on
+## the states (Fig. 1a), allow SSMs to separate these two levels of
+## stochasticity.
 
 # fit a GAM with an AR(1) process
 m_gam_ar <- mvgam(formula = passengers ~ 0, # assuming no error in response
@@ -175,7 +182,7 @@ m_gam_ar <- mvgam(formula = passengers ~ 0, # assuming no error in response
 ##' the `m_gam_ar` model is:
 ##' `passengers ∼ Poisson(λ_t)`
 ##' `log(λ_t) = b_0 + s(year) + s(month) + z_t`
-##' `z_t ∼ Normal(z_{t−1} a, σ)`
+##' `z_t ∼ Normal(z_{t−1} * a, σ)`
 ##' `σ ∼ Exponential(2)`
 ##' where `a` is the coefficient of the `AR(1)` process
 
