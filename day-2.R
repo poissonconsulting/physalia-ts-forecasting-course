@@ -1,4 +1,5 @@
 source('packages.R') # attach necessary packages
+source('gaussian-process-functions.R') # for plotting GP covariance function
 
 # example with count data: global number of international air passengers ----
 data('AirPassengers')
@@ -431,8 +432,55 @@ how_to_cite(m_diatox_car_ad)
 
 #' **break**
 
-  
-}
+##' Gaussian Processes
+##' GPs create a probability distribution over an infinitely-dimensional set of
+##' smooth functions that depend on the pairwise correlation across observations
+##' they are called "Gaussian" processes because they assume the sum of any set
+##' of observations to be Gaussian, which implies that each observation is also
+##' Gaussian.
+##' the GP's *kernel* is another term for its *covariance function*, which
+##' determines a model's smoothness by evaluating the similarity across points.
+##' GPs depend on the correlation between pairs of observations, accounting for
+##' the distance between them.
+pigments %>%
+  select(year, diatox) %>%
+  mutate(row = 1:n()) %>%
+  mutate(data_2 = list(rename_with(., \(x) paste0(x, '_2'), everything()))) %>%
+  unnest(data_2) %>%
+  filter(row_2 >= row) %>% # drop duplicate pairs (e.g., (2, 1) but not (1, 2))
+  mutate(distance = abs(year - year_2)) %>%
+  summarise(cov = cov(diatox, diatox_2),
+            n = n(),
+            .by = distance) %>%
+  filter(! is.na(cov)) %>% # drop distances with only
+  ggplot(aes(distance, cov)) +
+  geom_point(aes(color = sqrt(n))) +
+  labs(x = 'Distance (years)', y = 'Covariance') +
+  scale_color_viridis_c(name = 'n', labels = \(x) x^2)
 
+m_diatox_gp <- mvgam(formula = diatox ~ gp(year, c = 5/4, k = 30),
+                     trend_model = CAR(),
+                     family = Gamma(link = 'log'),
+                     data = pigments_car,
+                     chains = 4,
+                     burnin = 500,
+                     samples = 500,
+                     control = list(max_treedepth = 20, adapt_delta = 0.9),
+                     parallel = TRUE,
+                     silent = 2)
+
+summary(m_diatox_gp)
+
+plot(m_diatox_gp, type = 'residuals') # residuals from the model
+plot_predictions(m_diatox_gp, 'year') # smooth term of year
+plot(hindcast(m_diatox_gp))  # predictions with data points
+
+## GPs allow users to evaluate the continuous-time correlation as a function of
+## the distance between observations. In our model, observations are
+## conditionally approximately independent after ~0.2 of a year (~2.4 months).
+as.data.frame(m_diatox_gp, variable = 'gp_', regex = TRUE) %>%
+  plot_kernels(max_time = 1)
+
+# TODO: are the times in years? waiting for response from Nick regarding decimal times
 
 ## Dynamic coefficient models
