@@ -280,13 +280,14 @@ plot(forecast(m_gam_missing)) +
   geom_point(aes(time, passengers), air_passengers, color = 'black', size = 1) +
   ylim(c(0, 1e3))
 
+#' **break**
+
 ## smooth correlations over time ----
 ## continuous auto-regressive (CAR) processes
 pigments <- openxlsx::read.xlsx('https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/heads/main/data/mb/Manitoba%20pigs%20isotope%20Core%201%20April%202014.xlsx') %>%
   as_tibble() %>%
   rename_with(stringr::str_to_snake, everything()) %>%
   select(sample, mid_depth_cm, year, diatox) %>%
-  filter(! is.na(diatox)) %>%
   arrange(desc(mid_depth_cm)) %>% #' sorting by `year` gives odd trends in plots
   mutate(interval = year - lag(year))
 
@@ -306,11 +307,12 @@ ggplot(pigments, aes(interval, mid_depth_cm)) +
 
 ## plot an example time series (diatoxantin is a pigment produced by diatoms)
 ## diatoms are glass-like algae: https://en.wikipedia.org/wiki/Diatom
+lab_diatox <- expression(bold(Diatoxanthin~concentration~'(nmol'~g^{'-1'}~'C)'))
+
 ggplot(pigments, aes(year, diatox)) +
   geom_line() +
   geom_point(alpha = 0.75) +
-  labs(x = 'Year CE',
-       y = expression(bold(Diatoxanthin~concentration~'(nmol'~g^{'-1'}~'C)')))
+  labs(x = 'Year CE', y = lab_diatox)
 
 #' *Q:* how to distinguish the true trend from the error in the data?
 ## Auger-Méthé et al. (2021; https://doi.org/10.1002/ecm.1470):
@@ -343,6 +345,21 @@ pigments_car <- pigments %>%
   mutate(time = year)
 
 #' `AR(1)` fails because sampling is irregular
+if(FALSE) {
+  m_diatox_ar <- mvgam(formula = diatox ~ 0,
+                       trend_formula = ~ s(year, k = 30),
+                       trend_model = AR(),
+                       family = Gamma(link = 'log'),
+                       data = pigments_car,
+                       chains = 4,
+                       burnin = 750,
+                       samples = 500,
+                       control = list(max_treedepth = 20, adapt_delta = 0.9),
+                       parallel = TRUE,
+                       silent = 2)
+}
+
+#' fit a model with a continuous `AR(1)`
 m_diatox_car <- mvgam(formula = diatox ~ 0,
                       trend_formula = ~ s(year, k = 30),
                       trend_model = CAR(),
@@ -359,8 +376,10 @@ summary(m_diatox_car)
 mcmc_plot(m_diatox_car, type = 'trace', variable = '.', regex = TRUE)
 
 plot(m_diatox_car, type = 'residuals') # residuals from the model
-plot(m_diatox_car, type = 'forecast')  # predictions with data points
 plot_predictions(m_diatox_car, 'year') # smooth term of year
+plot(hindcast(m_diatox_car)) # predictions with data points
+#' *x axis is wrong*
+plot(m_diatox_car, type = 'forecast')  # predictions with data points
 
 ## why is the term so smooth? we can get a clue by looking at the posterior for
 ## the CAR(1) coefficient:
@@ -368,7 +387,8 @@ mcmc_plot(m_diatox_car, type = 'intervals', variable = 'ar1[1]')
 
 ## the trend is so smooth because the model has attributed the changes to the
 ## error process rather than to the biological process. this causes the model to
-## entirely miss the pulse in diatom abundance
+## interpret the pulse in diatom abundance as an autocorrelation process rather
+## than part of the true trend.
 
 ## refit the model, but allow the term's smoothness to vary across the years
 ## the adaptive spline allows the wiggliness to vary over the years
@@ -390,8 +410,10 @@ summary(m_diatox_car_ad)
 mcmc_plot(m_diatox_car_ad, type = 'trace', variable = '.', regex = TRUE)
 
 plot(m_diatox_car_ad, type = 'residuals') # residuals from the model
-plot(m_diatox_car_ad, type = 'forecast')  # predictions with data points
 plot_predictions(m_diatox_car_ad, 'year') # smooth term of year
+plot(hindcast(m_diatox_car_ad))  # predictions with data points
+#' *x axis is wrong*
+plot(m_diatox_car_ad, type = 'forecast')  # predictions with data points
 
 ## CAR(1) coefficient estimate is about the same, but the posterior's much wider
 plot_grid(mcmc_plot(m_diatox_car, type = 'intervals', variable = 'ar1[1]') +
@@ -400,67 +422,17 @@ plot_grid(mcmc_plot(m_diatox_car, type = 'intervals', variable = 'ar1[1]') +
             xlim(c(0.4, 1)),
           ncol = 1)
 
-## the model predicts concentrations that are 
-intercept <- exp(coef(m_diatox_car_ad$trend_mgcv_model)['(Intercept)'])
-
-tibble(year = seq(1800, 2008, length.out = 400),
-       time = year) %>%
-  bind_cols(.,
-            predict(m_diatox_car_ad, newdata = ., type = 'expected') %>%
-              as.data.frame() %>%
-              rename_with(stringr::str_to_snake, everything())) %>%
-  ggplot() +
-  geom_hline(yintercept = intercept, lty = 2) +
-  geom_ribbon(aes(year, ymin = q_2_5, ymax = q_97_5), alpha = 0.3) +
-  geom_line(aes(year, estimate)) +
-  geom_point(aes(year, diatox), pigments, alpha = 0.75)
-
 ##' `s(year)` coefficients clearly show how the coefficients affect the basis
 ##' the `rho` coefficients are the smoothness coefficients
 mcmc_plot(m_diatox_car_ad, type = 'intervals', variable = '.', regex = TRUE)
 
-##################
-##' TODO: understand why the `{mvgam}` model under-estimates the mean post 1925
-library('mgcv')
-plot_model <- function(.model) {
-  p <-
-    tibble(year = seq(1800, 2008, length.out = 400)) %>%
-    bind_cols(.,
-              predict(.model, newdata = ., se.fit = TRUE) %>%
-                as.data.frame() %>%
-                rename_with(stringr::str_to_snake, everything())) %>%
-    mutate(estimate = exp(fit),
-           q_2_5 = exp(fit - 1.96 * se_fit),
-           q_97_5 = exp(fit + 1.96 * se_fit)) %>%
-    ggplot() +
-    geom_hline(yintercept = intercept, lty = 2) +
-    geom_ribbon(aes(year, ymin = q_2_5, ymax = q_97_5), alpha = 0.3) +
-    geom_line(aes(year, estimate)) +
-    geom_point(aes(year, diatox), pigments, alpha = 0.75)
+## get methods quickly with citations (you need to add the model terms)
+how_to_cite(m_diatox_car_ad)
+
+#' **break**
+
   
-  return(p)
 }
 
-test_bam <- bam(diatox ~ s(year, bs = 'ad', k = 30),
-                  family = Gamma(link = 'log'),
-                  data = pigments_car,
-                  method = 'fREML',
-                  discrete = TRUE)
-plot_model(test_bam)
-
-# with a CAR(1) process
-test_gamm <- gamm(formula = diatox ~ s(year, bs = 'cr', k = 30), #' cannot use `bs = 'ad'`
-                  family = Gamma(link = 'log'),
-                  data = pigments_car,
-                  method = 'REML',
-                  correlation = corCAR1())
-test_gamm$lme$modelStruct$corStruct # CAR(1) coefficient
-plot_model(test_gamm$gam)
-
-## Gaussian Processes
-##' TODO: look at `file:///Users/stefano/Code/nicholasjclark/physalia-forecasting-course/day2/tutorial_2_physalia.html`
 
 ## Dynamic coefficient models
-
-## to get methods quickly with appropriate citations (need to add model terms)
-how_to_cite(m_gam_ar)
