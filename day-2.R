@@ -432,12 +432,28 @@ how_to_cite(m_diatox_car_ad)
 
 #' **break**
 
+##' *HERE: REVIEW BELOW*
 ##' Gaussian Processes
-##' GPs create a probability distribution over an infinitely-dimensional set of
-##' smooth functions that depend on the pairwise correlation across observations
-##' they are called "Gaussian" processes because they assume the sum of any set
-##' of observations to be Gaussian, which implies that each observation is also
-##' Gaussian.
+##' for more info, see `katbailey.github.io/post/gaussian-processes-for-dummies`
+##' 
+##' non-parametric: infinitely many parameters that are not explicitly estimated
+##' 
+##' set a prior over the smoothness of the function by setting the covariance
+##' function (the kernel) for the GP. the GP assumes that the joint distribution
+##' of all `f(x_i)` is multivariate Gaussian
+##' 
+##' A GP assumes that each observation is Gaussian, so the joint distribution
+##' of the responses is multivariate Gaussian, with some mean `μ(x)` and
+##' covariance matrix `∑(x)` given by `∑_{i,j}= k(x_i, x_j)`, where `k` is a
+##' positive definite kernel function. A common kernel function is the squared
+##' exponential kernel, AKA the Gaussian kernel or radial basis function kernel.
+##' 
+##' By setting `y = f(x)`, we think of the output as functions, which implies
+##' that we can now make inferences on distributions of functions rather than
+##' on data. this way, we can say that GPs create a probability distribution
+##' over an infinitely-dimensional set of smooth functions that depend on the
+##' pairwise correlation across observations
+##' 
 ##' the GP's *kernel* is another term for its *covariance function*, which
 ##' determines a model's smoothness by evaluating the similarity across points.
 ##' GPs depend on the correlation between pairs of observations, accounting for
