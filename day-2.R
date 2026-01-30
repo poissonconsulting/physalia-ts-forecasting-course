@@ -442,6 +442,48 @@ how_to_cite(m_diatox_car_ad)
 ##' setting the covariance function (the kernel) for the GP. the GP assumes that
 ##' the joint distribution of all `f(x_i)` is multivariate Gaussian
 ##' 
+##' rather than thinking about what function generated the `y` values, we focus
+##' on their similarity across the predictors
+
+## closer points are more similar (higher covariance)
+## the second half of the plot is generally not useful
+pigments %>%
+  select(year, diatox) %>%
+  mutate(row = 1:n()) %>%
+  mutate(data_2 = list(rename_with(., \(x) paste0(x, '_2'), everything()))) %>%
+  unnest(data_2) %>%
+  filter(row_2 >= row) %>% # drop duplicate pairs (e.g., (2, 1) but not (1, 2))
+  mutate(distance = abs(year - year_2)) %>%
+  summarise(cov = var(diatox, diatox_2),
+            #cov = cov(diatox, diatox_2),
+            n = n(),
+            .by = distance) %>%
+  filter(! is.na(cov)) %>% # drop distances with only one value
+  ggplot(aes(distance, cov)) +
+  geom_point(size = 2.5) +
+  geom_point(aes(color = sqrt(n))) +
+  labs(x = 'Distance (years)',
+       y = expression(bold(Covariance~ '(nmol'^'2'~g^{'-2'}~'C)'))) +
+  scale_color_viridis_c(name = 'n', labels = \(x) x^2)
+
+## closer points are less different (lower variance)
+tibble(distance = 1:10,
+       dat = pigments %>% select(year, diatox) %>% list()) %>%
+  unnest(dat) %>%
+  mutate(diatox_2 = map2_dbl(distance, year, \(.d, .y) {
+    value <- filter(pigments, year == .y + .d)$diatox
+    if(length(value) > 0) return(mean(value)) else return(NA_real_)
+  })) %>%
+  summarize(var = mean((diatox - diatox_2)^2, na.rm = TRUE),
+            n = sum(! is.na(diatox_2)),
+            .by = distance) %>%
+  ggplot(aes(distance, var)) +
+  geom_point(size = 2.5) +
+  geom_point(aes(color = sqrt(n))) +
+  labs(x = 'Distance (years)',
+       y = expression(bold(Variance~ '(nmol'^'2'~g^{'-2'}~'C)'))) +
+  scale_color_viridis_c(name = 'n', labels = \(x) x^2)
+
 ##' A GP assumes that each observation is conditionally Gaussian, so the joint
 ##' distribution of the responses is multivariate Gaussian, with mean `μ(x)` and
 ##' covariance matrix `∑(x)` given by `∑_{i,j}= K(x_i, x_j)`, where `K` is a
@@ -461,24 +503,6 @@ how_to_cite(m_diatox_car_ad)
 ##' on data. this way, we can say that GPs create a probability distribution
 ##' over an infinitely-dimensional set of smooth functions that depend on the
 ##' pairwise correlation across observations
-##' 
-##' TODO: add examples at each section above
-pigments %>%
-  select(year, diatox) %>%
-  mutate(row = 1:n()) %>%
-  mutate(data_2 = list(rename_with(., \(x) paste0(x, '_2'), everything()))) %>%
-  unnest(data_2) %>%
-  filter(row_2 >= row) %>% # drop duplicate pairs (e.g., (2, 1) but not (1, 2))
-  mutate(distance = abs(year - year_2)) %>%
-  summarise(cov = cov(diatox, diatox_2),
-            n = n(),
-            .by = distance) %>%
-  filter(! is.na(cov)) %>% # drop distances with only
-  ggplot(aes(distance, cov)) +
-  geom_point(aes(color = sqrt(n))) +
-  labs(x = 'Distance (years)', y = 'Covariance') +
-  scale_color_viridis_c(name = 'n', labels = \(x) x^2)
-
 m_diatox_gp <- mvgam(formula = diatox ~ gp(year, c = 5/4, k = 30),
                      trend_model = CAR(),
                      family = Gamma(link = 'log'),
