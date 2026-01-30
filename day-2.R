@@ -432,32 +432,37 @@ how_to_cite(m_diatox_car_ad)
 
 #' **break**
 
-##' *HERE: REVIEW BELOW*
 ##' Gaussian Processes
 ##' for more info, see `katbailey.github.io/post/gaussian-processes-for-dummies`
 ##' 
-##' non-parametric: infinitely many parameters that are not explicitly estimated
+##' GPs are non-parametric because they depend on potentially infinitely many
+##' parameters that they do not estimate directly or make assumptions about.
 ##' 
-##' set a prior over the smoothness of the function by setting the covariance
-##' function (the kernel) for the GP. the GP assumes that the joint distribution
-##' of all `f(x_i)` is multivariate Gaussian
+##' to fit a GP, we need to set a prior over the smoothness of the function by
+##' setting the covariance function (the kernel) for the GP. the GP assumes that
+##' the joint distribution of all `f(x_i)` is multivariate Gaussian
 ##' 
-##' A GP assumes that each observation is Gaussian, so the joint distribution
-##' of the responses is multivariate Gaussian, with some mean `μ(x)` and
-##' covariance matrix `∑(x)` given by `∑_{i,j}= k(x_i, x_j)`, where `k` is a
-##' positive definite kernel function. A common kernel function is the squared
-##' exponential kernel, AKA the Gaussian kernel or radial basis function kernel.
+##' A GP assumes that each observation is conditionally Gaussian, so the joint
+##' distribution of the responses is multivariate Gaussian, with mean `μ(x)` and
+##' covariance matrix `∑(x)` given by `∑_{i,j}= K(x_i, x_j)`, where `K` is a
+##' positive definite *kernel function* (i.e., a *covariance function*).
+##' The kernel function specifies how correlated (i.e., similar) we assume
+##' proximate observations are. A common kernel function is the squared
+##' exponential kernel, also known as the Gaussian kernel or radial basis
+##' function (RBF) kernel:
+##' `K(x_i, x_j) = exp((D(x_i, x_j)^2) / (2 * b^2))`,
+##' where `D(x_i, x_j)` is the squared Euclidean distance between the two `x`
+##' values, and `b` is a free parameter chosen or estimated by the analyst.
+##' A higher `b` implies greater smoothness. Thus, GPs depend on the correlation
+##' between pairs of observations, accounting for the distance between them.
 ##' 
-##' By setting `y = f(x)`, we think of the output as functions, which implies
+##' By setting `y = f(x)`, we think of the output as *functions*, which implies
 ##' that we can now make inferences on distributions of functions rather than
 ##' on data. this way, we can say that GPs create a probability distribution
 ##' over an infinitely-dimensional set of smooth functions that depend on the
 ##' pairwise correlation across observations
 ##' 
-##' the GP's *kernel* is another term for its *covariance function*, which
-##' determines a model's smoothness by evaluating the similarity across points.
-##' GPs depend on the correlation between pairs of observations, accounting for
-##' the distance between them.
+##' TODO: add examples at each section above
 pigments %>%
   select(year, diatox) %>%
   mutate(row = 1:n()) %>%
