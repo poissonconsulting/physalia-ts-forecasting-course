@@ -435,16 +435,9 @@ how_to_cite(m_diatox_car_ad)
 ##' Gaussian Processes
 ##' for more info, see `katbailey.github.io/post/gaussian-processes-for-dummies`
 ##' 
-##' GPs are non-parametric because they depend on potentially infinitely many
-##' parameters that they do not estimate directly or make assumptions about.
-##' 
-##' to fit a GP, we need to set a prior over the smoothness of the function by
-##' setting the covariance function (the kernel) for the GP. the GP assumes that
-##' the joint distribution of all `f(x_i)` is multivariate Gaussian
-##' 
-##' rather than thinking about what function generated the `y` values, we focus
-##' on their similarity across the predictors
-
+##' rather than assuming the y values are independent, leverage the properties
+##' of time series data by recognizing the autocorrelation across time. To do
+##' this, we need to account for the correlation between pairs of observations.
 ## closer points are more similar (higher covariance)
 ## the second half of the plot is generally not useful
 pigments %>%
@@ -484,25 +477,59 @@ tibble(distance = 1:10,
        y = expression(bold(Variance~ '(nmol'^'2'~g^{'-2'}~'C)'))) +
   scale_color_viridis_c(name = 'n', labels = \(x) x^2)
 
-##' A GP assumes that each observation is conditionally Gaussian, so the joint
-##' distribution of the responses is multivariate Gaussian, with mean `μ(x)` and
-##' covariance matrix `∑(x)` given by `∑_{i,j}= K(x_i, x_j)`, where `K` is a
-##' positive definite *kernel function* (i.e., a *covariance function*).
-##' The kernel function specifies how correlated (i.e., similar) we assume
-##' proximate observations are. A common kernel function is the squared
-##' exponential kernel, also known as the Gaussian kernel or radial basis
-##' function (RBF) kernel:
+##' just like the previous GAMs were formed by spline bases multiplied by
+##' coefficients, GPs can be interpreted as truly continuous, smooth, functions
+##' of random effects
+ggplot(pigments, aes(round(year / 50) * 50, diatox)) +
+  geom_point(alpha = 0.75) +
+  geom_smooth(method = 'gam', formula = y ~ s(x, bs = 'cs', k = 5)) +
+  labs(x = 'Year CE', y = lab_diatox)
+
+ggplot(pigments, aes(round(year / 20) * 20, diatox)) +
+  geom_point(alpha = 0.75) +
+  geom_smooth(method = 'gam') +
+  labs(x = 'Year CE', y = lab_diatox)
+
+ggplot(pigments, aes(round(year, -1), diatox)) +
+  geom_point(alpha = 0.75) +
+  geom_smooth(method = 'gam') +
+  labs(x = 'Year CE', y = lab_diatox)
+
+ggplot(pigments, aes(round(year / 5) * 5, diatox)) +
+  geom_point(alpha = 0.75) +
+  geom_smooth(method = 'gam') +
+  labs(x = 'Year CE', y = lab_diatox)
+
+##' set up the response data as multivariate Gaussian rather than IID. the MVN
+##' distribution has a mean matrix and a variance-covariance matrix. If the
+##' response values are IID with variance 3.2, the vcov matrix will be
+diag(10) * 3.2
+
+##' note that the diagonals are the variances, which are all 3.2, while the
+##' covariances are all 0, which implies independence (conditional on the model)
+##' 
+##' if we allow the covariances to be nonzero, we imply correlation (even after
+##' accounting for the model), and we can thus learn the values of the response
+##' by leveraging such correlation.
+##' 
+##' however, the number of cells in the vcov matrix is much larger than the
+##' number of observations, so we cannot estimate them all individually.
+##' 
+##' instead, we need to set a prior over the smoothness of the function by
+##' choosing a covariance function (the kernel) as a function of the distances
+##' between pairs of observations (e.g, distance in time).
+##' 
+##' A common kernel function is the squared exponential kernel, also known as
+##' the Gaussian kernel or radial basis function (RBF) kernel:
 ##' `K(x_i, x_j) = exp((D(x_i, x_j)^2) / (2 * b^2))`,
 ##' where `D(x_i, x_j)` is the squared Euclidean distance between the two `x`
-##' values, and `b` is a free parameter chosen or estimated by the analyst.
-##' A higher `b` implies greater smoothness. Thus, GPs depend on the correlation
-##' between pairs of observations, accounting for the distance between them.
+##' values, and `b` is a free parameter chosen or estimated by the analyst. A
+##' higher `b` implies greater smoothness.
 ##' 
-##' By setting `y = f(x)`, we think of the output as *functions*, which implies
-##' that we can now make inferences on distributions of functions rather than
-##' on data. this way, we can say that GPs create a probability distribution
-##' over an infinitely-dimensional set of smooth functions that depend on the
-##' pairwise correlation across observations
+##' NOTE: many materials on GPs are from a machine learning perspective, which
+##' uses fairly different terminology, so learning about GPs can be confusing.
+##' `https://www.youtube.com/watch?v=Y2ZLt4iOrXU` is a good resource, but you
+##' may need to watch earlier lectures to understand it fully
 m_diatox_gp <- mvgam(formula = diatox ~ gp(year, c = 5/4, k = 30),
                      trend_model = CAR(),
                      family = Gamma(link = 'log'),
