@@ -576,41 +576,34 @@ as.data.frame(m_diatox_gp, variable = 'gp_', regex = TRUE) %>%
 ##' this model will only work if `time == year`
 m_diatox_pn <- mvgam(formula = diatox ~
                        dynamic(percent_n, # variable varying over time
-                               k = 30, # n of basis functions for the GP
-                               rho = 1,
+                               k = 20, # n of basis functions for the GP
+                               rho = 40, # need to specify manually
                                scale = FALSE), # do not divide distances by max
                      trend_model = CAR(),
+                     noncentred = TRUE, # helps avoid conflations between terms
                      family = Gamma(link = 'log'),
                      data = pigments_car,
                      chains = 4,
                      burnin = 500,
                      samples = 500,
-                     control = list(max_treedepth = 20, adapt_delta = 0.95),
                      parallel = TRUE,
                      silent = 2)
 
 summary(m_diatox_pn)
 
-##' in `{mgcv}`, you can fit the term using `s(year, by = percent_n)`, or, more
-##' specifically `s(year, by = percent_n, bs = 'gp')`
-##' in `{brms}`, you can also fit the term using `gp(year, by = percent_n, ...)`
-
-m_diatox_tn$mgcv_model #' `{mvgam}` v.1.1.594 uses tp basis
-
 plot_predictions(m_diatox_pn, 'percent_n', type = 'expected')
 
-#' TODO: fix plot below: need actual realizations, not predictions
-expand_grid(percent_n = c(0.4, 0.6, 0.8, 1),
+expand_grid(percent_n = c(0.4, 0.6, 0.8),
             time = gratia:::seq_min_max(pigments$year, n = 400)) %>%
   predictions(m_diatox_pn, newdata = ., type = 'expected') %>%
   as.data.frame() %>%
   ggplot(aes(time, estimate, group = percent_n)) +
-  ## uncertainty is very wide
-  # geom_ribbon(aes(time, ymin = conf.low, ymax = conf.high, fill = percent_n),
-  #             alpha = 0.2) +
+  geom_ribbon(aes(time, ymin = conf.low, ymax = conf.high, fill = percent_n),
+              alpha = 0.2) +
   geom_line(lwd = 2) +
   geom_line(aes(color = percent_n), lwd = 1) +
-  geom_point(aes(year, diatox), pigments) +
+  geom_point(aes(year, diatox), pigments, size = 2) +
+  geom_point(aes(year, diatox, color = percent_n), pigments, size = 1) +
   labs(x = NULL, y = lab_diatox) +
   scale_fill_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
                    reverse = TRUE) +
