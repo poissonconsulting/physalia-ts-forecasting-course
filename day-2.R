@@ -256,7 +256,6 @@ plot(m_gam_ar_missing, type = 'forecast')
 ##' `{brms}` would assume that each observation follows the previous row!
 
 ## compare to a simple GAM
-## GAM with AR process has 
 m_gam_missing <-
   mvgam(formula = passengers ~
           s(year, k = 9, bs = 'tp') +
@@ -272,14 +271,16 @@ m_gam_missing <-
         parallel = TRUE, silent = 2)
 
 ## AR GAM has much more uncertainty
-plot(forecast(m_gam_missing)) +
-  geom_point(aes(time, passengers), air_passengers, color = 'white', size = 1.5) +
-  geom_point(aes(time, passengers), air_passengers, color = 'black', size = 1) +
-  ylim(c(0, 1e3)) +
+plot_grid(
+  plot(forecast(m_gam_missing)) +
+    geom_point(aes(time, passengers), air_passengers, color = 'white', size = 1.5) +
+    geom_point(aes(time, passengers), air_passengers, color = 'black', size = 1) +
+    ylim(c(0, 1e3)),
   plot(forecast(m_gam_ar_missing)) +
-  geom_point(aes(time, passengers), air_passengers, color = 'white', size = 1.5) +
-  geom_point(aes(time, passengers), air_passengers, color = 'black', size = 1) +
-  ylim(c(0, 1e3))
+    geom_point(aes(time, passengers), air_passengers, color = 'white', size = 1.5) +
+    geom_point(aes(time, passengers), air_passengers, color = 'black', size = 1) +
+    ylim(c(0, 1e3)),
+  ncol = 1)
 
 #' **break**
 
