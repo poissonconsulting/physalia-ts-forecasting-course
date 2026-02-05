@@ -550,14 +550,14 @@ summary(m_diatox_gp)
 
 plot(m_diatox_gp, type = 'residuals') # residuals from the model
 plot_predictions(m_diatox_gp, 'year') # smooth term of year
-plot(hindcast(m_diatox_gp))  # predictions with data points
+plot(hindcast(m_diatox_gp)) # predictions with data points
 
 ## GPs allow users to evaluate the continuous-time correlation as a function of
 ## the distance between observations. In our model, observations are
 ## conditionally approximately independent after ~10 years.
 ## intervals are 60% and 90% CIs
 as.data.frame(m_diatox_gp, variable = 'gp_', regex = TRUE) %>%
-  plot_kernels(max_time = 1)
+  plot_kernels(max_time = 20)
 
 # TODO: are the times in years? waiting for response from Nick regarding decimal times
 
