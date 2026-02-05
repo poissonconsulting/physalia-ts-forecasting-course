@@ -603,10 +603,131 @@ expand_grid(percent_n = c(0.4, 0.6, 0.8),
   geom_line(lwd = 2) +
   geom_line(aes(color = percent_n), lwd = 1) +
   geom_point(aes(year, diatox), pigments, size = 2) +
+  geom_point(aes(year, diatox), pigments, color = 'white', size = 1) +
+  labs(x = NULL, y = lab_diatox) +
+  scale_fill_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
+                   reverse = TRUE) +
+  scale_color_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
+                    reverse = TRUE) +
+  theme(legend.position = 'top')
+
+##' dynamic coefficient models in `{mgcv}`
+##' in `{mgcv}`, you can fit the term using `s(year, by = percent_n)`, or, more
+##' specifically `s(year, by = percent_n, bs = 'gp')`
+##' in `{brms}`, you can also fit the term using `gp(year, by = percent_n, ...)`
+
+m_diatox_pn$mgcv_model #' `{mvgam}` v.1.1.594 uses tp basis
+
+##' time-varying coefficients with `{mgcv}`
+library('mgcv')
+m_diatox_pn_mgcv <- gam(diatox ~ s(year, by = percent_n, k = 20, bs = 'gp'),
+                        family = Gamma(link = 'log'),
+                        data = pigments_car,
+                        method = 'REML')
+
+## diatox vs % N
+data_slice(m_diatox_pn_mgcv,
+           percent_n = evenly(percent_n, n = 100),
+           year = evenly(year, n = 5)) %>%
+  gratia::fitted_values(m_diatox_pn_mgcv, data = .) %>%
+  ggplot(aes(percent_n, .fitted, group = year)) +
+  coord_cartesian(ylim = c(0, 200)) +
+  geom_ribbon(aes(percent_n, ymin = .lower_ci, ymax = .upper_ci, fill = year),
+              alpha = 0.2) +
+  geom_line(lwd = 2) +
+  geom_line(aes(color = year), lwd = 1) +
+  geom_point(aes(percent_n, diatox), pigments, size = 2) +
+  geom_point(aes(percent_n, diatox, color = year), pigments, size = 1) +
+  labs(x = '% N (dry weight)', y = lab_diatox) +
+  scale_color_iridescent(name = 'Year') +
+  scale_fill_iridescent(name = 'Year')
+
+## diatox vs year
+data_slice(m_diatox_pn_mgcv,
+           percent_n = evenly(percent_n, 3),
+           year = evenly(year, n = 400)) %>%
+  gratia::fitted_values(m_diatox_pn_mgcv, data = .) %>%
+  ggplot(aes(year, .fitted, group = percent_n)) +
+  coord_cartesian(ylim = c(0, 200)) +
+  geom_ribbon(aes(year, ymin = .lower_ci, ymax = .upper_ci, fill = percent_n),
+              alpha = 0.2) +
+  geom_line(lwd = 2) +
+  geom_line(aes(color = percent_n), lwd = 1) +
+  geom_point(aes(year, diatox), pigments, size = 2) +
   geom_point(aes(year, diatox, color = percent_n), pigments, size = 1) +
   labs(x = NULL, y = lab_diatox) +
   scale_fill_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
                    reverse = TRUE) +
   scale_color_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
                     reverse = TRUE) +
+  theme(legend.position = 'top')
+
+# surface plot
+data_slice(m_diatox_pn_mgcv,
+           percent_n = evenly(percent_n, n = 400),
+           year = evenly(year, n = 400)) %>%
+  gratia::fitted_values(m_diatox_pn_mgcv, data = .) %>%
+  ggplot(aes(year, percent_n, fill = .fitted)) +
+  geom_raster() +
+  scale_x_continuous('Year CE', expand = c(0, 0)) +
+  scale_y_continuous('% N (dry weight)', expand = c(0, 0)) +
+  scale_fill_bamako(name = lab_diatox, limits = c(0, 200), na.value = 'white') +
+  theme(legend.position = 'top')
+
+#' allow the effect of `percent_n` to vary smoothly
+m_diatox_pn_ti <- gam(diatox ~ s(year, k = 20, bs = 'gp') +
+                        s(percent_n, k = 5, bs = 'tp') +
+                        ti(year, percent_n, k = c(10, 5), bs = c('gp', 'tp')),
+                        family = Gamma(link = 'log'),
+                        data = pigments_car,
+                        method = 'REML')
+
+## diatox vs % N
+data_slice(m_diatox_pn_ti,
+           percent_n = evenly(percent_n, n = 100),
+           year = evenly(year, n = 5)) %>%
+  gratia::fitted_values(m_diatox_pn_ti, data = .) %>%
+  ggplot(aes(percent_n, .fitted, group = year)) +
+  coord_cartesian(ylim = c(0, 200)) +
+  geom_ribbon(aes(percent_n, ymin = .lower_ci, ymax = .upper_ci, fill = year,
+                  color = year), alpha = 0.2) +
+  geom_line(lwd = 2) +
+  geom_line(aes(color = year), lwd = 1) +
+  geom_point(aes(percent_n, diatox), pigments, size = 2.5) +
+  geom_point(aes(percent_n, diatox, color = year), pigments, size = 1) +
+  labs(x = '% N (dry weight)', y = lab_diatox) +
+  scale_color_iridescent(name = 'Year') +
+  scale_fill_iridescent(name = 'Year')
+
+## diatox vs year
+data_slice(m_diatox_pn_ti,
+           percent_n = evenly(percent_n, 3),
+           year = evenly(year, n = 400)) %>%
+  gratia::fitted_values(m_diatox_pn_ti, data = .) %>%
+  ggplot(aes(year, .fitted, group = percent_n)) +
+  coord_cartesian(ylim = c(0, 200)) +
+  geom_ribbon(aes(year, ymin = .lower_ci, ymax = .upper_ci, fill = percent_n,
+                  color = percent_n),
+              alpha = 0.2) +
+  geom_line(lwd = 2) +
+  geom_line(aes(color = percent_n), lwd = 1) +
+  geom_point(aes(year, diatox), pigments, size = 2) +
+  geom_point(aes(year, diatox, color = percent_n), pigments, size = 1) +
+  labs(x = NULL, y = lab_diatox) +
+  scale_fill_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
+                   reverse = TRUE) +
+  scale_color_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
+                    reverse = TRUE) +
+  theme(legend.position = 'top')
+
+# surface plot
+data_slice(m_diatox_pn_ti,
+           percent_n = evenly(percent_n, n = 400),
+           year = evenly(year, n = 400)) %>%
+  gratia::fitted_values(m_diatox_pn_ti, data = .) %>%
+  ggplot(aes(year, percent_n, fill = .fitted)) +
+  geom_raster() +
+  scale_x_continuous('Year CE', expand = c(0, 0)) +
+  scale_y_continuous('% N (dry weight)', expand = c(0, 0)) +
+  scale_fill_bamako(name = lab_diatox, limits = c(0, 200), na.value = 'white') +
   theme(legend.position = 'top')
