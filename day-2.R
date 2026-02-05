@@ -559,6 +559,9 @@ plot(hindcast(m_diatox_gp)) # predictions with data points
 as.data.frame(m_diatox_gp, variable = 'gp_', regex = TRUE) %>%
   plot_kernels(max_time = 20)
 
-# TODO: are the times in years? waiting for response from Nick regarding decimal times
+##' `rho`:
+##' - length scale parameter; similar to SD in horizontal direction
+##' - may be scaled so that the maximum euclidean distance between points is 1     
+##' `alpha`: marginal variability; similar to variance in vertical direction
 
 ## Dynamic coefficient models
