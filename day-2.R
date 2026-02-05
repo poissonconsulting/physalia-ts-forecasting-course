@@ -530,7 +530,12 @@ diag(10) * 3.2
 ##' uses fairly different terminology, so learning about GPs can be confusing.
 ##' `https://www.youtube.com/watch?v=Y2ZLt4iOrXU` is a good resource, but you
 ##' may need to watch earlier lectures to understand it fully
-m_diatox_gp <- mvgam(formula = diatox ~ gp(year, c = 5/4, k = 30),
+m_diatox_gp <- mvgam(formula = diatox ~
+                       gp(time, # variable for calculating distances
+                          c = 5/4, # scalar for range of predictions
+                          k = 30, # n of basis functions for approx GPs
+                          gr = FALSE, # grouping not supported by mvgam
+                          scale = FALSE), # do not divide distances by max
                      trend_model = CAR(),
                      family = Gamma(link = 'log'),
                      data = pigments_car,
