@@ -521,10 +521,10 @@ diag(10) * 3.2
 ##' 
 ##' A common kernel function is the squared exponential kernel, also known as
 ##' the Gaussian kernel or radial basis function (RBF) kernel:
-##' `K(x_i, x_j) = exp((D(x_i, x_j)^2) / (2 * b^2))`,
-##' where `D(x_i, x_j)` is the squared Euclidean distance between the two `x`
-##' values, and `b` is a free parameter chosen or estimated by the analyst. A
-##' higher `b` implies greater smoothness.
+##' `K(x_i, x_j) = alpha^2 exp(- (x_i - x_j)^2 / (2 * phi^2))`,
+##' where `alpha^2` is a scalar for the variance, `(x_i - x_j)` is the Euclidean
+##' distance between the two `x` values, and `phi^2` determines the correlation
+##' between observations with a distance of `x_i - x_j`. 
 ##' 
 ##' NOTE: many materials on GPs are from a machine learning perspective, which
 ##' uses fairly different terminology, so learning about GPs can be confusing.
