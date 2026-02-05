@@ -542,7 +542,7 @@ m_diatox_gp <- mvgam(formula = diatox ~
                      chains = 4,
                      burnin = 500,
                      samples = 500,
-                     control = list(max_treedepth = 20, adapt_delta = 0.9),
+                     control = list(max_treedepth = 20, adapt_delta = 0.95),
                      parallel = TRUE,
                      silent = 2)
 
