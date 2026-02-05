@@ -549,7 +549,8 @@ plot(hindcast(m_diatox_gp))  # predictions with data points
 
 ## GPs allow users to evaluate the continuous-time correlation as a function of
 ## the distance between observations. In our model, observations are
-## conditionally approximately independent after ~0.2 of a year (~2.4 months).
+## conditionally approximately independent after ~10 years.
+## intervals are 60% and 90% CIs
 as.data.frame(m_diatox_gp, variable = 'gp_', regex = TRUE) %>%
   plot_kernels(max_time = 1)
 
