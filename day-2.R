@@ -532,7 +532,7 @@ diag(10) * 3.2
 ##' `https://www.youtube.com/watch?v=Y2ZLt4iOrXU` is a good resource, but you
 ##' may need to watch earlier lectures to understand it fully
 m_diatox_gp <- mvgam(formula = diatox ~
-                       gp(time, # variable for calculating distances
+                       gp(year, # variable for calculating distances
                           c = 5/4, # scalar for range of predictions
                           k = 30, # n of basis functions for approx GPs
                           gr = FALSE, # grouping not supported by mvgam
@@ -555,10 +555,10 @@ plot(hindcast(m_diatox_gp)) # predictions with data points
 
 ## GPs allow users to evaluate the continuous-time correlation as a function of
 ## the distance between observations. In our model, observations are
-## conditionally approximately independent after ~10 years.
+## conditionally approximately independent after ~40 years.
 ## intervals are 60% and 90% CIs
 as.data.frame(m_diatox_gp, variable = 'gp_', regex = TRUE) %>%
-  plot_kernels(max_time = 20)
+  plot_kernels(max_time = 50)
 
 ##' `rho`:
 ##' - length scale parameter; similar to SD in horizontal direction
