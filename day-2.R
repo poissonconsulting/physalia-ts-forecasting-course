@@ -281,15 +281,13 @@ m_gam_missing <-
 ## AR GAM has much more uncertainty
 plot_grid(
   plot(forecast(m_gam_missing)) +
-    geom_point(aes(time, passengers), air_passengers, color = 'white', size = 1.5) +
-    geom_point(aes(time, passengers), air_passengers, color = 'black', size = 1) +
-    geom_point(aes(time, passengers), data_train_missing,color='red2',size=1.5)+
+    geom_point(aes(time, passengers), air_passengers, shape = 4, size = 0.75) +
+    geom_point(aes(time, passengers), data_train_missing, na.rm = TRUE)+
     ylim(c(0, 1e3)) +
     ggtitle('Simple GAM'),
   plot(forecast(m_gam_ar_missing)) +
-    geom_point(aes(time, passengers), air_passengers, color = 'white',size=1.5)+
-    geom_point(aes(time, passengers), air_passengers, color = 'black',size=1) +
-    geom_point(aes(time, passengers), data_train_missing,color='red2',size=1.5)+
+    geom_point(aes(time, passengers), air_passengers, shape = 4, size = 0.75) +
+    geom_point(aes(time, passengers), data_train_missing, na.rm = TRUE)+
     ylim(c(0, 1e3)) +
     ggtitle('AR GAM'),
   ncol = 2)
