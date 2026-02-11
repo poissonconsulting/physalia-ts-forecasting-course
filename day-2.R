@@ -195,6 +195,8 @@ summary(m_gam_ar) # diagnostics are ok
 # there's still some autocorrelation at lag 12, but coef is quite uncertain
 # intervals are 50%, 60%, and 90%, estimated from samples
 plot(m_gam_ar)
+plot(forecast(m_gam_ar))
+plot(hindcast(m_gam_ar))
 
 #' *NOTE:* we need to drop rows with `NA` lagged y values because the model
 #' can't use them. specifying the AR process in the `trends_model` argument
