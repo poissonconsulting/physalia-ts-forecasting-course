@@ -170,7 +170,8 @@ m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
                   trend_formula = ~
                     s(year, k = 9, bs = 'tp') +
                     s(month, k = 10, bs = 'cc'),
-                  trend_model = AR(p = 1),
+                  trend_model = AR(p = 1), # AR(1) model
+                  noncentred = TRUE, # use a noncentered AR(1) model
                   knots = list(month = c(0.5, 12.5)),
                   family = poisson(),
                   data = data_train,
@@ -209,10 +210,11 @@ data_test_12 <- air_passengers %>%
 # fits in ~100 seconds
 m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
                      trend_formula = ~
-                       lag_12_passengers +
+                       log(lag_12_passengers) + # since we are on the log scale
                        s(year, k = 9, bs = 'tp') +
                        s(month, k = 10, bs = 'cc'),
                      trend_model = AR(p = 1),
+                     noncentred = TRUE,
                      knots = list(month = c(0.5, 12.5)),
                      family = poisson(),
                      data = data_train_12,
@@ -223,9 +225,8 @@ m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
                      control = list(max_treedepth = 20, adapt_delta = 0.95),
                      parallel = TRUE)
 
-coef(m_gam_ar_12$trend_mgcv_model)['lag_12_passengers']
-plot(m_gam_ar) # see values at lag-12 for ACF and pACF
-plot(m_gam_ar_12) # values at lag-12 are smaller, but lag-1 values are larger
+summary(m_gam_ar_12)
+coef(m_gam_ar_12$trend_mgcv_model)['log(lag_12_passengers)']
 plot_grid(plot(m_gam_ar), # see values at lag 12 for ACF and pACF
           plot(m_gam_ar_12)) # values at lag 12 are smaller, but lag 1 is larger
 
@@ -262,7 +263,8 @@ plot(m_gam_ar_missing, type = 'forecast')
 
 ## compare to a simple GAM
 m_gam_missing <-
-  mvgam(formula = passengers ~
+  mvgam(formula = passengers ~ 0,
+        trend_formula = ~
           s(year, k = 9, bs = 'tp') +
           s(month, k = 10, bs = 'cc'),
         knots = list(month = c(0.5, 12.5)),
@@ -270,9 +272,8 @@ m_gam_missing <-
         data = data_train_missing,
         newdata = data_test,
         chains = 4,
-        burnin = 750,
+        burnin = 500,
         samples = 500,
-        control = list(max_treedepth = 20, adapt_delta = 0.95),
         parallel = TRUE, silent = 2)
 
 ## AR GAM has much more uncertainty
@@ -280,12 +281,16 @@ plot_grid(
   plot(forecast(m_gam_missing)) +
     geom_point(aes(time, passengers), air_passengers, color = 'white', size = 1.5) +
     geom_point(aes(time, passengers), air_passengers, color = 'black', size = 1) +
-    ylim(c(0, 1e3)),
+    geom_point(aes(time, passengers), data_train_missing,color='red2',size=1.5)+
+    ylim(c(0, 1e3)) +
+    ggtitle('Simple GAM'),
   plot(forecast(m_gam_ar_missing)) +
-    geom_point(aes(time, passengers), air_passengers, color = 'white', size = 1.5) +
-    geom_point(aes(time, passengers), air_passengers, color = 'black', size = 1) +
-    ylim(c(0, 1e3)),
-  ncol = 1)
+    geom_point(aes(time, passengers), air_passengers, color = 'white',size=1.5)+
+    geom_point(aes(time, passengers), air_passengers, color = 'black',size=1) +
+    geom_point(aes(time, passengers), data_train_missing,color='red2',size=1.5)+
+    ylim(c(0, 1e3)) +
+    ggtitle('AR GAM'),
+  ncol = 2)
 
 #' **break**
 
