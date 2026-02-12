@@ -376,7 +376,7 @@ pigments_car <- pigments %>%
   #            by = 'year') %>%
   mutate(time = year)
 
-#' `AR(1)` fails because sampling is irregular
+#' `AR(1)` fails because sampling is irregular in v. 1.1.594
 if(FALSE) {
   m_diatox_ar <- mvgam(formula = diatox ~ 0,
                        trend_formula = ~ s(year, k = 30),
