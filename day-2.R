@@ -710,7 +710,7 @@ m_diatox_pn_ti <- gam(diatox ~ s(year, k = 20, bs = 'gp') +
                         s(percent_n, k = 5, bs = 'tp') +
                         ti(year, percent_n, k = c(10, 5), bs = c('gp', 'tp')),
                       family = Gamma(link = 'log'),
-                      data = pigments_car,
+                      data = pigments,
                       method = 'REML')
 
 ## diatox vs % N
