@@ -431,7 +431,7 @@ m_diatox_car_ad <- mvgam(formula = diatox ~ 0,
                          family = Gamma(link = 'log'),
                          data = pigments_car,
                          chains = 4,
-                         burnin = 500,a
+                         burnin = 500,
                          samples = 1500,
                          control = list(max_treedepth = 30, adapt_delta = 0.95),
                          parallel = TRUE,
