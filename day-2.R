@@ -302,8 +302,15 @@ pigments <- openxlsx::read.xlsx('https://github.com/simpson-lab/wpg-mb-lakes/raw
   rename_with(stringr::str_to_snake, everything()) %>%
   select(mid_depth_cm, year, diatox, percentn) %>%
   rename(percent_n = percentn) %>%
-  arrange(desc(mid_depth_cm)) %>% #' sorting by `year` gives odd trends in plots
-  mutate(interval = year - lag(year))
+  # collapse two duplicate years into the same row
+  summarize(mid_depth_cm = mean(mid_depth_cm, na.rm = TRUE),
+            year = mean(year, na.rm = TRUE),
+            diatox = mean(diatox, na.rm = TRUE),
+            percent_n = mean(percent_n),
+            .by = year) %>%
+  arrange(year) %>%
+  mutate(interval = year - lag(year),
+         series = factor('core 1'))
 
 ## sediment age decreases nonlinearly with sample depth
 ggplot(pigments, aes(year, mid_depth_cm)) +
