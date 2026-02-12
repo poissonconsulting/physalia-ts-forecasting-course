@@ -431,8 +431,8 @@ m_diatox_car_ad <- mvgam(formula = diatox ~ 0,
                          family = Gamma(link = 'log'),
                          data = pigments_car,
                          chains = 4,
-                         burnin = 750,
-                         samples = 1000,
+                         burnin = 500,a
+                         samples = 1500,
                          control = list(max_treedepth = 30, adapt_delta = 0.95),
                          parallel = TRUE,
                          silent = 2)
@@ -443,14 +443,16 @@ mcmc_plot(m_diatox_car_ad, type = 'trace', variable = '.', regex = TRUE)
 plot(m_diatox_car_ad, type = 'residuals') # residuals from the model
 plot_predictions(m_diatox_car_ad, 'year') # smooth term of year
 plot(hindcast(m_diatox_car_ad))  # predictions with data points
-#' *x axis is wrong*
+#' time is wrong; should be fixed in version 2.0 of `{mvgam}` later this year
 plot(m_diatox_car_ad, type = 'forecast')  # predictions with data points
 
 ## CAR(1) coefficient estimate is about the same, but the posterior's much wider
 plot_grid(mcmc_plot(m_diatox_car, type = 'intervals', variable = 'ar1[1]') +
-            xlim(c(0.4, 1)),
+            xlim(c(0, 1)) +
+            ggtitle('Thin plate regression spline'),
           mcmc_plot(m_diatox_car_ad, type = 'intervals', variable = 'ar1[1]') +
-            xlim(c(0.4, 1)),
+            xlim(c(0, 1)) +
+            ggtitle('Adaptive spline'),
           ncol = 1)
 
 ##' `s(year)` coefficients clearly show how the coefficients affect the basis
