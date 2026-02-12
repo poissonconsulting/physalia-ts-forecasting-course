@@ -345,30 +345,25 @@ ggplot(pigments, aes(year, diatox)) +
   geom_point(alpha = 0.75) +
   labs(x = 'Year CE', y = lab_diatox)
 
-#' *Q:* how to distinguish the true trend from the error in the data?
-## Auger-Méthé et al. (2021; https://doi.org/10.1002/ecm.1470):
-## The assumptions that the hidden states are autocorrelated (e.g., that a large
-## population in year t will likely lead to a large population in year t + 1),
-## and that observations are independent once we account for their dependence on
-## the states (Fig. 1a), allow SSMs to separate these two levels of
-## stochasticity.
-m_diatox_0 <- mvgam(formula = diatox ~ s(year, k = 20),
+##' fit a basic GAM
+##' cannot have any NA observations: cannot have `time` column
+m_diatox_0 <- mvgam(formula = diatox ~ s(year, k = 20), # k=40 gives similar fit
                     family = Gamma(link = 'log'),
                     data = pigments,
                     chains = 4,
-                    burnin = 1000,
+                    burnin = 500,
                     samples = 500,
-                    control = list(max_treedepth = 20, adapt_delta = 0.9),
                     parallel = TRUE,
                     silent = 2)
 
+plot(m_diatox_0, type = 'series') # time series not accounting for the model
+plot(m_diatox_0) # ACF is much lower once the model accounts for time
 summary(m_diatox_0)
 mcmc_plot(m_diatox_0, type = 'trace', variable = '.', regex = TRUE)
 draw(m_diatox_0$mgcv_model, n = 200)
 
-plot(m_diatox_0, type = 'series')    # time series not accounting for the model
-plot(m_diatox_0, type = 'residuals') # residuals from the model
-plot(m_diatox_0, type = 'forecast')  # estimated mean over time with data points
+#' time is wrong; should be fixed in version 2.0 of `{mvgam}` later this year
+plot(m_diatox_0, type = 'forecast')
 
 ## add a CAR(1) term to account for continuous-time autocorrelation
 ## add a column of time for the CAR(1) process
