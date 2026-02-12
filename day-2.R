@@ -365,9 +365,15 @@ draw(m_diatox_0$mgcv_model, n = 200)
 #' time is wrong; should be fixed in version 2.0 of `{mvgam}` later this year
 plot(m_diatox_0, type = 'forecast')
 
-## add a CAR(1) term to account for continuous-time autocorrelation
-## add a column of time for the CAR(1) process
+##' add a `CAR(1)` term to account for continuous-time autocorrelation
+##' add a column of time for the `CAR(1)` process
+##' use `CAR(1)` if times are not integers
+##' using `CAR(1)` because `AR(1)` fails if there are NAs in the response and
+##' requires a consecutive series of `time` values
 pigments_car <- pigments %>%
+  ##' *adding missing times causes errors with calculated residuals*
+  # right_join(tibble(year = seq(min(.$year), max(.$year), by = 1)),
+  #            by = 'year') %>%
   mutate(time = year)
 
 #' `AR(1)` fails because sampling is irregular
@@ -387,14 +393,13 @@ if(FALSE) {
 
 #' fit a model with a continuous `AR(1)`
 m_diatox_car <- mvgam(formula = diatox ~ 0,
-                      trend_formula = ~ s(year, k = 30),
+                      trend_formula = ~ s(year, k = 20),
                       trend_model = CAR(),
                       family = Gamma(link = 'log'),
                       data = pigments_car,
                       chains = 4,
-                      burnin = 750,
-                      samples = 500,
-                      control = list(max_treedepth = 20, adapt_delta = 0.9),
+                      burnin = 500,
+                      samples = 1000,
                       parallel = TRUE,
                       silent = 2)
 
@@ -404,12 +409,12 @@ mcmc_plot(m_diatox_car, type = 'trace', variable = '.', regex = TRUE)
 plot(m_diatox_car, type = 'residuals') # residuals from the model
 plot_predictions(m_diatox_car, 'year') # smooth term of year
 plot(hindcast(m_diatox_car)) # predictions with data points
-#' *x axis is wrong*
-plot(m_diatox_car, type = 'forecast')  # predictions with data points
+plot(m_diatox_car, type = 'forecast') #' predictions w data points: *bad x axis*
 
-## why is the term so smooth? we can get a clue by looking at the posterior for
-## the CAR(1) coefficient:
-mcmc_plot(m_diatox_car, type = 'intervals', variable = 'ar1[1]')
+## why is the term so smooth and uncertain?
+## we can get a clue by looking at the posterior for the CAR(1) coefficient:
+plot_grid(mcmc_plot(m_diatox_car, type = 'intervals', variable = 'ar1[1]'),
+          plot_predictions(m_diatox_car, 'year')) # smooth term of year
 
 ## the trend is so smooth because the model has attributed the changes to the
 ## error process rather than to the biological process. this causes the model to
