@@ -317,7 +317,13 @@ ggplot(pigments, aes(year, mid_depth_cm)) +
   geom_point(alpha = 0.75) +
   geom_path() +
   xlab('Year CE') +
-  scale_y_reverse('Sample depth (cm)')
+  scale_y_reverse('Sample depth (cm)') +
+  annotate('segment', x = -Inf, xend = -Inf, y = -Inf, yend = Inf,
+           arrow = arrow(length = unit(0.5, 'cm'), ends = 'last',
+                         type = 'closed'), color = 'darkorange') +
+  # Prevents clipping so left side of arrow is visible
+  coord_cartesian(clip = 'off') +
+  theme(axis.line.y = element_line(color = 'darkorange'))
 
 ## time intervals vary substantially across years
 ggplot(pigments, aes(interval, mid_depth_cm)) +
