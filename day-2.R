@@ -1,7 +1,7 @@
 source('packages.R') # attach necessary packages
 source('gaussian-process-functions.R') # for plotting GP covariance function
 
-# example with count data: global number of international air passengers ----
+## example with count data: global number of international air passengers ----
 data('AirPassengers')
 
 AirPassengers
@@ -292,7 +292,7 @@ plot_grid(
     ggtitle('AR GAM'),
   ncol = 2)
 
-#' **break**
+##' **break**
 
 ## smooth correlations over time ----
 ## continuous auto-regressive (CAR) processes
