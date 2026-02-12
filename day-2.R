@@ -536,7 +536,8 @@ ggplot(pigments, aes(round(year / 5) * 5, diatox)) +
 ##' set up the response data as multivariate Gaussian rather than IID. the MVN
 ##' distribution has a mean matrix and a variance-covariance matrix. If the
 ##' response values are IID with variance 3.2, the vcov matrix will be
-diag(10) * 3.2
+diag(10) # I_{10} identity matrix
+3.2 * diag(10)
 
 ##' note that the diagonals are the variances, which are all 3.2, while the
 ##' covariances are all 0, which implies independence (conditional on the model)
