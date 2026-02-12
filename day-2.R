@@ -625,62 +625,21 @@ summary(m_diatox_pn)
 plot_predictions(m_diatox_pn, 'percent_n', type = 'expected')
 
 expand_grid(percent_n = c(0.4, 0.6, 0.8),
-            time = gratia:::seq_min_max(pigments$year, n = 400)) %>%
-  predictions(m_diatox_pn, newdata = ., type = 'expected') %>%
-  as.data.frame() %>%
-  ggplot(aes(time, estimate, group = percent_n)) +
-  geom_ribbon(aes(time, ymin = conf.low, ymax = conf.high, fill = percent_n),
-              alpha = 0.2) +
-  geom_line(lwd = 2) +
-  geom_line(aes(color = percent_n), lwd = 1) +
-  geom_point(aes(year, diatox), pigments, size = 2) +
-  geom_point(aes(year, diatox), pigments, color = 'white', size = 1) +
-  labs(x = NULL, y = lab_diatox) +
-  scale_fill_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
-                   reverse = TRUE) +
-  scale_color_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
-                    reverse = TRUE) +
-  theme(legend.position = 'top')
-
-##' dynamic coefficient models in `{mgcv}`
-##' in `{mgcv}`, you can fit the term using `s(year, by = percent_n)`, or, more
-##' specifically `s(year, by = percent_n, bs = 'gp')`
-##' in `{brms}`, you can also fit the term using `gp(year, by = percent_n, ...)`
-
-m_diatox_pn$mgcv_model #' `{mvgam}` v.1.1.594 uses tp basis
-
-##' time-varying coefficients with `{mgcv}`
-library('mgcv')
-m_diatox_pn_mgcv <- gam(diatox ~ s(year, by = percent_n, k = 20, bs = 'gp'),
-                        family = Gamma(link = 'log'),
-                        data = pigments_car,
-                        method = 'REML')
-
-## diatox vs % N
-data_slice(m_diatox_pn_mgcv,
-           percent_n = evenly(percent_n, n = 100),
-           year = evenly(year, n = 5)) %>%
-  gratia::fitted_values(m_diatox_pn_mgcv, data = .) %>%
-  ggplot(aes(percent_n, .fitted, group = year)) +
+            time = gratia:::seq_min_max(pigments$year, n = 400),
+            series = unique(pigments_car$series)) %>%
+  ##' using `predictions()` with `{mvgam}` v. 1.1.594 results in the error:
+  ##' Error:
+  ##' ! Unable to compute predicted values with this model. This error can arise
+  ##' when `insight::get_data()` is unable to extract the dataset from the model
+  ##' object, or when the data frame was modified since fitting the model. You
+  ##' can try to supply a different dataset to the `newdata` argument. In
+  ##' addition, this error message was raised:the following required variables
+  ##' are missing from newdata:
+  ##' seriesBug Tracker: https://github.com/vincentarelbundock/marginaleffects/issues
+  bind_cols(., predict(m_diatox_pn, newdata = ., type = 'expected')) %>%
+  ggplot(aes(time, Estimate, group = percent_n)) +
   coord_cartesian(ylim = c(0, 200)) +
-  geom_ribbon(aes(percent_n, ymin = .lower_ci, ymax = .upper_ci, fill = year),
-              alpha = 0.2) +
-  geom_line(lwd = 2) +
-  geom_line(aes(color = year), lwd = 1) +
-  geom_point(aes(percent_n, diatox), pigments, size = 2) +
-  geom_point(aes(percent_n, diatox, color = year), pigments, size = 1) +
-  labs(x = '% N (dry weight)', y = lab_diatox) +
-  scale_color_iridescent(name = 'Year') +
-  scale_fill_iridescent(name = 'Year')
-
-## diatox vs year
-data_slice(m_diatox_pn_mgcv,
-           percent_n = evenly(percent_n, 3),
-           year = evenly(year, n = 400)) %>%
-  gratia::fitted_values(m_diatox_pn_mgcv, data = .) %>%
-  ggplot(aes(year, .fitted, group = percent_n)) +
-  coord_cartesian(ylim = c(0, 200)) +
-  geom_ribbon(aes(year, ymin = .lower_ci, ymax = .upper_ci, fill = percent_n),
+  geom_ribbon(aes(time, ymin = Q2.5, ymax = Q97.5, fill = percent_n),
               alpha = 0.2) +
   geom_line(lwd = 2) +
   geom_line(aes(color = percent_n), lwd = 1) +
@@ -693,12 +652,33 @@ data_slice(m_diatox_pn_mgcv,
                     reverse = TRUE) +
   theme(legend.position = 'top')
 
+## diatox vs % N
+expand_grid(
+  percent_n = gratia:::seq_min_max(pigments$percent_n, n = 100),
+  year = gratia:::seq_min_max(pigments$year, n = 5),
+  series = unique(pigments_car$series)) %>%
+  mutate(time = year) %>%
+  bind_cols(., predict(m_diatox_pn, newdata = ., type = 'expected')) %>%
+  ggplot(aes(percent_n, Estimate, group = year)) +
+  coord_cartesian(ylim = c(0, 200)) +
+  geom_ribbon(aes(percent_n, ymin = Q2.5, ymax = Q97.5, fill = year),
+              alpha = 0.2) +
+  geom_line(lwd = 2) +
+  geom_line(aes(color = year), lwd = 1) +
+  geom_point(aes(percent_n, diatox), pigments, size = 2) +
+  geom_point(aes(percent_n, diatox, color = year), pigments, size = 1) +
+  labs(x = '% N (dry weight)', y = lab_diatox) +
+  scale_color_iridescent(name = 'Year') +
+  scale_fill_iridescent(name = 'Year')
+
 # surface plot
-data_slice(m_diatox_pn_mgcv,
-           percent_n = evenly(percent_n, n = 400),
-           year = evenly(year, n = 400)) %>%
-  gratia::fitted_values(m_diatox_pn_mgcv, data = .) %>%
-  ggplot(aes(year, percent_n, fill = .fitted)) +
+expand_grid(
+  percent_n = gratia:::seq_min_max(pigments$percent_n, n = 100),
+  year = gratia:::seq_min_max(pigments$year, n = 100),
+  series = unique(pigments_car$series)) %>%
+  mutate(time = year) %>%
+  bind_cols(., predict(m_diatox_pn, newdata = ., type = 'expected')) %>%
+  ggplot(aes(year, percent_n, fill = Estimate)) +
   geom_raster() +
   scale_x_continuous('Year CE', expand = c(0, 0)) +
   scale_y_continuous('% N (dry weight)', expand = c(0, 0)) +
@@ -706,21 +686,30 @@ data_slice(m_diatox_pn_mgcv,
   theme(legend.position = 'top')
 
 #' allow the effect of `percent_n` to vary smoothly
-m_diatox_pn_ti <- gam(diatox ~ s(year, k = 20, bs = 'gp') +
-                        s(percent_n, k = 5, bs = 'tp') +
-                        ti(year, percent_n, k = c(10, 5), bs = c('gp', 'tp')),
-                      family = Gamma(link = 'log'),
-                      data = pigments,
-                      method = 'REML')
+m_diatox_pn <- mvgam(formula = diatox ~
+                       gp(year, c = 5/4, k = 30, gr = FALSE, scale = FALSE) +
+                       s(percent_n, k = 5, bs = 'tp') +
+                       ti(year, percent_n, k = c(10, 5), bs = c('gp', 'tp')),
+                     trend_model = CAR(),
+                     noncentred = TRUE, # helps avoid conflations between terms
+                     family = Gamma(link = 'log'),
+                     data = pigments_car,
+                     chains = 4,
+                     burnin = 500,
+                     samples = 500,
+                     parallel = TRUE,
+                     silent = 2)
 
 ## diatox vs % N
-data_slice(m_diatox_pn_ti,
-           percent_n = evenly(percent_n, n = 100),
-           year = evenly(year, n = 5)) %>%
-  gratia::fitted_values(m_diatox_pn_ti, data = .) %>%
-  ggplot(aes(percent_n, .fitted, group = year)) +
+expand_grid(
+  percent_n = gratia:::seq_min_max(pigments$percent_n, n = 100),
+  year = gratia:::seq_min_max(pigments$year, n = 5),
+  series = unique(pigments_car$series)) %>%
+  mutate(time = year) %>%
+  bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = 'expected')) %>%
+  ggplot(aes(percent_n, Estimate, group = year)) +
   coord_cartesian(ylim = c(0, 200)) +
-  geom_ribbon(aes(percent_n, ymin = .lower_ci, ymax = .upper_ci, fill = year,
+  geom_ribbon(aes(percent_n, ymin = Q2.5, ymax = Q97.5, fill = year,
                   color = year), alpha = 0.2) +
   geom_line(lwd = 2) +
   geom_line(aes(color = year), lwd = 1) +
@@ -731,13 +720,15 @@ data_slice(m_diatox_pn_ti,
   scale_fill_iridescent(name = 'Year')
 
 ## diatox vs year
-data_slice(m_diatox_pn_ti,
-           percent_n = evenly(percent_n, 3),
-           year = evenly(year, n = 400)) %>%
-  gratia::fitted_values(m_diatox_pn_ti, data = .) %>%
-  ggplot(aes(year, .fitted, group = percent_n)) +
+expand_grid(
+  percent_n = gratia:::seq_min_max(pigments$percent_n, n = 3),
+  year = gratia:::seq_min_max(pigments$year, n = 400),
+  series = unique(pigments_car$series)) %>%
+  mutate(time = year) %>%
+  bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = 'expected')) %>%
+  ggplot(aes(year, Estimate, group = percent_n)) +
   coord_cartesian(ylim = c(0, 200)) +
-  geom_ribbon(aes(year, ymin = .lower_ci, ymax = .upper_ci, fill = percent_n,
+  geom_ribbon(aes(year, ymin = Q2.5, ymax = Q97.5, fill = percent_n,
                   color = percent_n),
               alpha = 0.2) +
   geom_line(lwd = 2) +
@@ -752,13 +743,22 @@ data_slice(m_diatox_pn_ti,
   theme(legend.position = 'top')
 
 # surface plot
-data_slice(m_diatox_pn_ti,
-           percent_n = evenly(percent_n, n = 400),
-           year = evenly(year, n = 400)) %>%
-  gratia::fitted_values(m_diatox_pn_ti, data = .) %>%
-  ggplot(aes(year, percent_n, fill = .fitted)) +
+expand_grid(
+  percent_n = gratia:::seq_min_max(pigments$percent_n, n = 100),
+  year = gratia:::seq_min_max(pigments$year, n = 100),
+  series = unique(pigments_car$series)) %>%
+  mutate(time = year) %>%
+  bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = 'expected')) %>%
+  ggplot(aes(year, percent_n, fill = Estimate)) +
   geom_raster() +
   scale_x_continuous('Year CE', expand = c(0, 0)) +
   scale_y_continuous('% N (dry weight)', expand = c(0, 0)) +
   scale_fill_bamako(name = lab_diatox, limits = c(0, 200), na.value = 'white') +
   theme(legend.position = 'top')
+
+##' dynamic coefficient models in `{mgcv}`
+##' in `{mgcv}`, you can fit the term using `s(year, by = percent_n)`, or, more
+##' specifically `s(year, by = percent_n, bs = 'gp')`
+##' in `{brms}`, you can also fit the term using `gp(year, by = percent_n, ...)`
+
+m_diatox_pn$mgcv_model #' `{mvgam}` v.1.1.594 uses tp basis
