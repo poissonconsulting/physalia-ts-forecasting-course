@@ -492,7 +492,7 @@ pigments %>%
   scale_color_viridis_c(name = 'n', labels = \(x) x^2)
 
 ## closer points are less different (lower variance)
-tibble(distance = 1:10,
+tibble(distance = 1:75,
        dat = pigments %>% select(year, diatox) %>% list()) %>%
   unnest(dat) %>%
   mutate(diatox_2 = map2_dbl(distance, year, \(.d, .y) {
@@ -505,9 +505,10 @@ tibble(distance = 1:10,
   ggplot(aes(distance, var)) +
   geom_point(size = 2.5) +
   geom_point(aes(color = sqrt(n))) +
+  geom_smooth(method = 'gam', formula = y ~ s(x, k = 5)) +
   labs(x = 'Distance (years)',
        y = expression(bold(Variance~ '(nmol'^'2'~g^{'-2'}~'C)'))) +
-  scale_color_viridis_c(name = 'n', labels = \(x) x^2)
+  scale_color_viridis_c(name = 'n', labels = \(x) x^2, limits = c(0, NA))
 
 ##' just like the previous GAMs were formed by spline bases multiplied by
 ##' coefficients, GPs can be interpreted as truly continuous, smooth, functions
@@ -519,17 +520,17 @@ ggplot(pigments, aes(round(year / 50) * 50, diatox)) +
 
 ggplot(pigments, aes(round(year / 20) * 20, diatox)) +
   geom_point(alpha = 0.75) +
-  geom_smooth(method = 'gam') +
+  geom_smooth(method = 'gam', formula = y ~ s(x, bs = 'cs', k = 10)) +
   labs(x = 'Year CE', y = lab_diatox)
 
 ggplot(pigments, aes(round(year, -1), diatox)) +
   geom_point(alpha = 0.75) +
-  geom_smooth(method = 'gam') +
+  geom_smooth(method = 'gam', formula = y ~ s(x, bs = 'cs', k = 20)) +
   labs(x = 'Year CE', y = lab_diatox)
 
 ggplot(pigments, aes(round(year / 5) * 5, diatox)) +
   geom_point(alpha = 0.75) +
-  geom_smooth(method = 'gam') +
+  geom_smooth(method = 'gam', formula = y ~ s(x, bs = 'cs', k = 20)) +
   labs(x = 'Year CE', y = lab_diatox)
 
 ##' set up the response data as multivariate Gaussian rather than IID. the MVN
