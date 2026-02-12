@@ -327,10 +327,14 @@ ggplot(pigments, aes(year, mid_depth_cm)) +
 
 ## time intervals vary substantially across years
 ggplot(pigments, aes(interval, mid_depth_cm)) +
-  geom_point(alpha = 0.75) +
   geom_path() +
+  geom_point(alpha = 0.75) +
   xlab('Time interval between samples (years)') +
-  scale_y_reverse('Sample depth (cm)')
+  scale_y_reverse('Sample depth (cm)') +
+  annotate('segment', x = -Inf, xend = -Inf, y = -Inf, yend = Inf,
+           arrow = arrow(length = unit(0.5, 'cm'), ends = 'last',
+                         type = 'closed')) +
+  coord_cartesian(clip = 'off')
 
 ## plot an example time series (diatoxantin is a pigment produced by diatoms)
 ## diatoms are glass-like algae: https://en.wikipedia.org/wiki/Diatom
