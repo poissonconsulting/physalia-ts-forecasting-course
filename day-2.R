@@ -341,7 +341,7 @@ ggplot(pigments, aes(interval, mid_depth_cm)) +
 lab_diatox <- expression(bold(Diatoxanthin~concentration~'(nmol'~g^{'-1'}~'C)'))
 
 ggplot(pigments, aes(year, diatox)) +
-  geom_line() +
+  geom_path() +
   geom_point(alpha = 0.75) +
   labs(x = 'Year CE', y = lab_diatox)
 
