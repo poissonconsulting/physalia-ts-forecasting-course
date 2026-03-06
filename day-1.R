@@ -1,3 +1,4 @@
+# TODO: add intro to Bayes
 source('packages.R') # attach necessary packages
 
 ## Introduction to time series and time series visualization ----
