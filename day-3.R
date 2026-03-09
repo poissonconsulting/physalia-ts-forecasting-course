@@ -90,6 +90,8 @@ plot_mvgam_fc(m_gam_ar, newdata = new_data, realisations = TRUE)
 #' `arguments imply differing number of rows: 792, 852`
 ##' function is adding the test data twice: `nrow(data_test)` is 60
 
+#' **break**
+
 # interpreting predictions ----
 summary(m_gam_ar)
 
@@ -179,6 +181,8 @@ pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'sd', binwidth = 2.5)
 pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'var', binwidth = 250)
 
 pp_check(m_gam_ar, type = 'stat_2d', ndraws = 10, stat = c('median', 'sd'))
+
+#' **break**
 
 ## comparing models ----
 ## moved intercept to observation process to improve fitting process
