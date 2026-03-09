@@ -1,6 +1,18 @@
 source('packages.R') # attach necessary packages
 source('gaussian-process-functions.R') # for plotting GP covariance function
 
+##' *Stete space mdoels*:
+##' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
+##' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
+##' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
+##' 
+##' but estimating the process model requires us to work backwards:
+##' - model the space of possible states (i.e., outcomes, responses)
+##' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
+##' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
+##' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
+##' uncertainty needs to be propagated accordingly across each step
+
 ## example with count data: global number of international air passengers ----
 data('AirPassengers')
 

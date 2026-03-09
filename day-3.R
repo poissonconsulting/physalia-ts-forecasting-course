@@ -1,8 +1,19 @@
 source('packages.R') # attach necessary packages
 
 # TODO: check titles for each section
+##' *Stete space mdoels*:
+##' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
+##' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
+##' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
+##' 
+##' but estimating the process model requires us to work backwards:
+##' - model the space of possible states (i.e., outcomes, responses)
+##' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
+##' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
+##' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
+##' uncertainty needs to be propagated accordingly across each step
 
-## Forecasting from dynamic models ---
+## Forecasting from dynamic models ----
 
 ##' applications of state-space models:
 ##' Kalman filter and Apollo missions: `https://doi.org/10.1109/MCS.2010.936465`
