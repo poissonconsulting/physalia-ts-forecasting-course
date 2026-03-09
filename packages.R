@@ -3,6 +3,7 @@ if(FALSE) {
 }
 
 # attach necessary packages
+library('openxlsx')  #' for importing xlsx files
 library('gratia')    #' for plotting GAMs
 library('ctmm')      #' for continuous-time stochastic models
 library('dplyr')     #' for data wrangling and tidying
