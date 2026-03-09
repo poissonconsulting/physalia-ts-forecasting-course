@@ -1,6 +1,5 @@
 source('packages.R') # attach necessary packages
 
-# TODO: check titles for each section
 ##' *Stete space mdoels*:
 ##' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
 ##' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
@@ -42,7 +41,7 @@ m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
                   burnin = 750,
                   samples = 500,
                   control = list(max_treedepth = 20, adapt_delta = 0.95),
-                  parallel = TRUE)
+                  parallel = TRUE, silent = 2)
 
 ##' Dynamic `mvgam` models contain draws for many quantities, all stored as MCMC
 ##' draws in an object of class `stanfit` in the `model_output` slot:
@@ -150,8 +149,8 @@ head(as.vector(forecast(m_gam_ar, type = 'link')$forecasts$series1))
 #' show the relative change in response with the predictor
 #' allows to multiply intercept term by the partial effects
 #' intercept = est. mean response, averaged across all smooths, on resp. scale
-draw(m_gam_ar$trend_mgcv_model, fun = exp)
-draw(m_gam_ar$trend_mgcv_model,
+draw(m_gam_ar$trend_mgcv_model, fun = exp) # relative change in passengers
+draw(m_gam_ar$trend_mgcv_model, # partial change in passengers
      fun = \(x) exp(coef(m_gam_ar$trend_mgcv_model)['(Intercept)']) * exp(x))
 plot(forecast(m_gam_ar, type = 'expected'))
 head(as.vector(forecast(m_gam_ar, type = 'expected')$forecasts$series1))
@@ -170,11 +169,11 @@ pp_check(m_gam_ar, type = 'ribbon', ndraws = 100)
 pp_check(m_gam_ar, type = 'intervals', ndraws = 100)
 pp_check(m_gam_ar, type = 'scatter', ndraws = 9)
 pp_check(m_gam_ar, type = 'scatter_avg', ndraws = 100)
-pp_check(m_gam_ar, type = 'hist', ndraws = 8)
+pp_check(m_gam_ar, type = 'hist', ndraws = 8, bins = 10)
 pp_check(m_gam_ar, type = 'dens_overlay', ndraws = 100)
 pp_check(m_gam_ar, type = 'ecdf_overlay', ndraws = 100)
 
-pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'mean', binwidth = 2.5)
+pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'mean', binwidth = 1)
 pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'median', binwidth = 2.5)
 pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'sd', binwidth = 2.5)
 pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'var', binwidth = 250)
@@ -182,8 +181,9 @@ pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'var', binwidth = 250)
 pp_check(m_gam_ar, type = 'stat_2d', ndraws = 10, stat = c('median', 'sd'))
 
 ## comparing models ----
-m_bad <- mvgam(formula = passengers ~ 0, # no error in observation process
-               trend_formula = ~ 1,
+## moved intercept to observation process to improve fitting process
+m_bad <- mvgam(formula = passengers ~ 1,
+               trend_formula = ~ 0,
                trend_model = AR(p = 1), # AR(1) model
                noncentred = TRUE, # use a noncentered AR(1) model
                knots = list(month = c(0.5, 12.5)),
@@ -192,18 +192,19 @@ m_bad <- mvgam(formula = passengers ~ 0, # no error in observation process
                chains = 4,
                burnin = 750,
                samples = 500,
-               parallel = TRUE, silent = 0)
+               parallel = TRUE,
+               silent = 2)
 
 # both models predict decently well
 plot(hindcast(m_gam_ar))
 plot(hindcast(m_bad))
 
 plot_predictions(m_gam_ar, by = 'time') # GAM model "understands" the trends
-plot_predictions(m_bad, by = 'time') # the AR model only predicts stationarity
+plot_predictions(m_bad, by = 'time') # the AR model always assumes stationarity
 
 loo_compare(m_gam_ar, m_bad) # TODO: fix warning
 
-# predicting from new data
+# predicting from new data (no terms to predict for the bad model)
 plot_predictions(m_gam_ar, condition = 'month', points = 0.5)
 plot_predictions(m_gam_ar, condition = 'year', points = 0.5)
 
@@ -266,12 +267,14 @@ calculate_sis <- function(u, l, alpha, y) {
 ## rather than focusing on point-specific estimates of model performance, it's
 ## better to look at the full forecast distribution rather than just a subset of
 ## points
-## this is what we've been doing when forecasting!
+## this what we've been doing when comparing forecasts with DRPS/CRPS!
+## DRPS/CRPS: Discrete/Continuous Ranked Probability Score
 plot(forecast(m_gam_ar))
 
-# for example, we may only observe some values within a distribution, but we can
-# still estimate the model for the full estimated distribution!
-set.seed(40)
+## for example, we only observe some values from a distribution, but we can
+## still estimate the model for the full estimated distribution!
+## the probabilities are conditional on the observed data and model parameters
+set.seed(20)
 d_probs <- tibble(y = seq(-4, 4, by = 0.01),
        dens = dnorm(y),
        log_dens = dnorm(y, log = TRUE),
@@ -280,6 +283,7 @@ d_probs <- tibble(y = seq(-4, 4, by = 0.01),
 
 d_obs <- filter(d_probs, sampled)
 
+# probability densities
 ggplot() +
   geom_area(aes(y, dens), d_probs, fill = 'grey', color = 'black') +
   geom_rug(aes(y), d_obs, lwd = 1, color = 'red4') +
@@ -290,6 +294,7 @@ ggplot() +
                arrow = arrow(angle = 15, type = 'closed')) +
   ylab('Probability density')
 
+# log probability density
 ggplot() +
   geom_area(aes(y, log_dens), d_probs, fill = 'grey', color = 'black') +
   geom_rug(aes(y), d_obs, lwd = 1, color = 'red4') +
@@ -300,12 +305,40 @@ ggplot() +
                arrow = arrow(angle = 15, type = 'closed')) +
   ylab('Log(probability density)')
 
-## continue at file:///Users/stefano/Code/nicholasjclark/physalia-forecasting-course/day3/lecture_4_slidedeck.html?#81
+## taking log(density):
+## - helps keep numbers more manageable
+## - moves operations to the additive scale
+## - can be sensitive to outliers (i.e., very negative log(density))
 
-## Bayesian posterior predictive checks
+# Continuous Ranked Probability Score
+# "-1" forces a flip in the pdf, making the observation the MLE value
+if(FALSE) {
+  if_else(est < y,
+          integrate(f = (pnorm(est)    )^2, lower = -Inf, upper = Inf),
+          integrate(f = (pnorm(est) - 1)^2, lower = -Inf, upper = Inf))
+}
+# SIS converges to CRPS when evaluating many of equally spaced intervals for SIS
 
+# Discrete Ranked Probability Score (CRPS for discrete random variables)
+# "-1" forces a flip in the pdf, making the observation the MLE value
+if(FALSE) {
+  if_else(est < y,
+          sum(f = (ppois(est)    )^2, lower = 0, upper = Inf),
+          sum(f = (ppois(est) - 1)^2, lower = 0, upper = Inf))
+}
 
-#' ADD SSMs?
-##' `O_t ~ MVN(Y_proc, s_obs)`
-##' `Y_proc ~ MVN(mu_proc, s_proc)`
-##' `Mu_proc = GAM`
+#' `{mvgam}` can produce scores quickly and easily
+score(forecast(m_gam_ar))$series1 %>% head() # CRPS by default; = DRPS in output
+score(forecast(m_gam_ar))$all_series %>% head()
+
+# DRPS produces same values since P(Y = x) = 0 at non-integer values of x
+score(forecast(m_gam_ar), score = 'drps')$series1 %>% head()
+score(forecast(m_gam_ar), score = 'drps')$all_series %>% head()
+
+#' Expected log predictive density, as used in `loo_compare()`
+score(forecast(m_gam_ar, type = 'link'), score = 'elpd')$series1 %>% head()
+
+# averaging SIS values across many intervals will converge to DPRS/CPRS values
+score(forecast(m_gam_ar), score = 'sis')$series1 %>% head()
+score(forecast(m_gam_ar), score = 'sis', interval_width = 0.5)$series1 %>% head()
+score(forecast(m_gam_ar), score = 'sis')$all_series %>% head()
