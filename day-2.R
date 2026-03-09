@@ -308,7 +308,7 @@ plot_grid(
 
 ## smooth correlations over time ----
 ## continuous auto-regressive (CAR) processes
-##' data from `https://doi.org/10.1111/fwb.14192`
+##' data from: Gushulak et al. (2023; https://doi.org/10.1111/fwb.14192)
 pigments <- openxlsx::read.xlsx('https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/heads/main/data/mb/Manitoba%20pigs%20isotope%20Core%201%20April%202014.xlsx') %>%
   as_tibble() %>%
   rename_with(stringr::str_to_snake, everything()) %>%
