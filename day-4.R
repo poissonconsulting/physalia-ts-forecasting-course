@@ -7,35 +7,40 @@ SAMPLING_DATE <- lubridate::decimal_date(as.POSIXlt('2014-04-01'))
 pigments <-
   bind_rows(
     read.xlsx('https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/heads/main/data/mb/Manitoba%20pigs%20isotope%20Core%201%20April%202014.xlsx') %>%
-      mutate(core = 'Core 1',
-             interval = c(SAMPLING_DATE, YEAR[-length(YEAR)]) - YEAR,
-             weight = interval / mean(interval)),
+      mutate(core = 'Core 1'),
     read.xlsx('https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/heads/main/data/mb/Manitoba%20pigs%20isotope%20Core%202%20April%202014.xlsx') %>%
-      mutate(core = 'Core 2',
-             CHLA = CHL_A,
-             interval = c(SAMPLING_DATE, YEAR[-length(YEAR)]) - YEAR,
-             weight = interval / mean(interval)),
+      mutate(core = 'Core 2') %>%
+      rename(CHLA = CHL_A),
     read.xlsx('https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/heads/main/data/mb/Manitoba%20pigs%20isotope%20Core%203%20April%202014.xlsx') %>%
-      mutate(core = 'Core 3',
-             interval = c(SAMPLING_DATE, YEAR[-length(YEAR)]) - YEAR,
-             weight = interval / mean(interval)),
+      mutate(core = 'Core 3'),
     read.xlsx('https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/heads/main/data/mb/Manitoba%20pigs%20isotope%20Core%204%20April%202014.xlsx') %>%
-      mutate(core = 'Core 4',
-             interval = c(SAMPLING_DATE, YEAR[-length(YEAR)]) - YEAR,
-             weight = interval / mean(interval))) %>%
-  select(core, YEAR, ALLOX, DIATOX, CANTH, PHEO_B, BCAROT, CHL_PHEO,
-         interval, weight) %>%
-  rename(allo = ALLOX,
-         b_car = BCAROT) %>%
-  rename_with(tolower)
+      mutate(core = 'Core 4')) %>%
+  select(core, YEAR, DIATOX) %>%
+  rename_with(tolower) %>%
+  filter(! is.na(year)) %>%
+  mutate(year = round(year),
+         interval = c(SAMPLING_DATE, year[-length(year)]) - year,
+         weight = interval / mean(interval),
+         .by = core) %>%
+  summarize(diatox = mean(diatox),
+            .by = c(core, year)) %>%
+  as_tibble() %>%
+  right_join(expand_grid(year = seq(min(.$year), max(.$year), by = 1),
+                         core = unique(.$core)),
+             by = c('year', 'core')) %>%
+  mutate(core = factor(core),
+         series = core,
+         time = year) %>%
+  arrange(time, core)
 
-pigments %>%
-  pivot_longer(allo:chl_pheo, names_to = 'pigment', values_to = 'conc') %>%
-  ggplot(aes(year, conc)) +
-  facet_grid(pigment ~ core, scales = 'free') +
+View(pigments)
+
+ggplot(pigments, aes(year, diatox)) +
+  facet_wrap(. ~ core) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = 'gam', color = 'black', formula = y ~ s(x, k = 15)) +
-  scale_fill_brewer(name = 'Core', aesthetics = c('fill', 'color'))
+  ylim(c(0, NA))
+
 
 ## Multivariate ecological time series
 
