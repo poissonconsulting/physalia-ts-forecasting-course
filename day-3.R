@@ -1,21 +1,21 @@
 source('packages.R') # attach necessary packages
 
-##' *Stete space mdoels*:
-##' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
-##' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
-##' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
-##' 
-##' but estimating the process model requires us to work backwards:
-##' - model the space of possible states (i.e., outcomes, responses)
-##' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
-##' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
-##' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
-##' uncertainty needs to be propagated accordingly across each step
+#' *Stete space mdoels*:
+#' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
+#' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
+#' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
+#' 
+#' but estimating the process model requires us to work backwards:
+#' - model the space of possible states (i.e., outcomes, responses)
+#' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
+#' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
+#' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
+#' uncertainty needs to be propagated accordingly across each step
 
-## Forecasting from dynamic models ----
+# Forecasting from dynamic models ----
 
-##' applications of state-space models:
-##' Kalman filter and Apollo missions: `https://doi.org/10.1109/MCS.2010.936465`
+#' applications of state-space models:
+#' Kalman filter and Apollo missions: `https://doi.org/10.1109/MCS.2010.936465`
 
 air_passengers <-
   tibble(time = 1:length(AirPassengers),
@@ -43,17 +43,17 @@ m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
                   control = list(max_treedepth = 20, adapt_delta = 0.95),
                   parallel = TRUE, silent = 2)
 
-##' Dynamic `mvgam` models contain draws for many quantities, all stored as MCMC
-##' draws in an object of class `stanfit` in the `model_output` slot:
-##' - `β` coefficients for linear predictor terms (called `b`)
-##' - Family-specific shape/scale parameters:
-##'    - `ϕ` for Negative Binomial,
-##'    - `σ_obs` for Normal / LogNormal
-##' - Trend-specific parameters:
-##'    - `α` and `ρ` for GP trends,
-##'    - `σ` and `ar1` for AR trends
-##' - In-sample posterior predictions: `ypred`
-##' - In-sample posterior trend estimates: `trend`
+#' Dynamic `mvgam` models contain draws for many quantities, all stored as MCMC
+#' draws in an object of class `stanfit` in the `model_output` slot:
+#' - `β` coefficients for linear predictor terms (called `b`)
+#' - Family-specific shape/scale parameters:
+#'    - `ϕ` for Negative Binomial,
+#'    - `σ_obs` for Normal / LogNormal
+#' - Trend-specific parameters:
+#'    - `α` and `ρ` for GP trends,
+#'    - `σ` and `ar1` for AR trends
+#' - In-sample posterior predictions: `ypred`
+#' - In-sample posterior trend estimates: `trend`
 
 class(m_gam_ar$model_output)
 m_gam_ar$model_output@model_pars # names of model parameters
@@ -74,8 +74,8 @@ plot(m_gam_ar, type = 'trend', realisations = TRUE, n_realisations = 10) +
 plot(m_gam_ar, type = 'trend') +
   geom_vline(xintercept = nrow(data_train), lty = 'dashed')
 
-## generate forectasts for additional new data
-## predicting later is useful if data are not available or too large to add
+# generate forectasts for additional new data
+# predicting later is useful if data are not available or too large to add
 data_test
 new_data <- tibble(time = max(data_train$time) + 1:(12 * (2027 - 1963)),
                    dec_date = max(data_train$dec_date) + time/12,
@@ -88,7 +88,7 @@ plot_mvgam_fc(m_gam_ar, newdata = new_data, realisations = TRUE)
 
 #' `plot(forecast(m_gam_ar, newdata = new_data))` fails with error:
 #' `arguments imply differing number of rows: 792, 852`
-##' function is adding the test data twice: `nrow(data_test)` is 60
+#' function is adding the test data twice: `nrow(data_test)` is 60
 
 #' **break**
 
@@ -157,12 +157,12 @@ draw(m_gam_ar$trend_mgcv_model, # partial change in passengers
 plot(forecast(m_gam_ar, type = 'expected'))
 head(as.vector(forecast(m_gam_ar, type = 'expected')$forecasts$series1))
 
-##' *NOTE:* in `{mgcv}` and `{gratia}`, predictions on the "response" scale are
-##'         actually on the expected scale, since they only include uncertainty
-##'         in the mean
-##'         in `{mvgam}`, predictions on the response scale include uncertainty
-##'         at the observation level, rather than just the mean, and the values
-##'         are always integers for count models
+#' *NOTE:* in `{mgcv}` and `{gratia}`, predictions on the "response" scale are
+#'         actually on the expected scale, since they only include uncertainty
+#'         in the mean
+#'         in `{mvgam}`, predictions on the response scale include uncertainty
+#'         at the observation level, rather than just the mean, and the values
+#'         are always integers for count models
 plot(forecast(m_gam_ar, type = 'response'))
 head(as.vector(forecast(m_gam_ar, type = 'response')$forecasts$series1))
 
@@ -184,8 +184,8 @@ pp_check(m_gam_ar, type = 'stat_2d', ndraws = 10, stat = c('median', 'sd'))
 
 #' **break**
 
-## comparing models ----
-## moved intercept to observation process to improve fitting process
+# comparing models ----
+# moved intercept to observation process to improve fitting process
 m_bad <- mvgam(formula = passengers ~ 1,
                trend_formula = ~ 0,
                trend_model = AR(p = 1), # AR(1) model
@@ -207,6 +207,7 @@ plot_predictions(m_gam_ar, by = 'time') # GAM model "understands" the trends
 plot_predictions(m_bad, by = 'time') # the AR model always assumes stationarity
 
 loo_compare(m_gam_ar, m_bad) # TODO: fix warning
+#' TODO: find data points with bad `k` and adjust the model accordingly
 
 # predicting from new data (no terms to predict for the bad model)
 plot_predictions(m_gam_ar, condition = 'month', points = 0.5)
@@ -230,54 +231,54 @@ plot_slopes(m_gam_ar, variables = 'month', by = 'month', type = 'response',
   geom_hline(yintercept = 0, linetype = 'dashed') +
   coord_cartesian(ylim = c(-1000, 1000))
 
-## assessing model fits with forecasts ----
-## measures for a good forecast:
-## - reliability: is able to predict unobserved data well
-## - sharpness: can produce precise predictions with low uncertainty
-## - skill: can predict more accurately than other models or a baseline
-## 
-## we assess the fit of models by evaluating the fits for data that were not
-## fit to the model, such as with (leave-one-out) cross-validation. however,
-## we cannot simply leave out a subset of our data because data close in time
-## are correlated, so data dropped randomly are not independent from those not
-## used to fit the model.
-## leave-future-out CV allows us to assess the model using future data that are
-## less correlated on the observed data.
+# assessing model fits with forecasts ----
+# measures for a good forecast:
+# - reliability: is able to predict unobserved data well
+# - sharpness: can produce precise predictions with low uncertainty
+# - skill: can predict more accurately than other models or a baseline
+# 
+# we assess the fit of models by evaluating the fits for data that were not
+# fit to the model, such as with (leave-one-out) cross-validation. however,
+# we cannot simply leave out a subset of our data because data close in time
+# are correlated, so data dropped randomly are not independent from those not
+# used to fit the model.
+# leave-future-out CV allows us to assess the model using future data that are
+# less correlated on the observed data.
 
-## point-based forecast evaluation
-## 
-##' given a forecast horizon, H:
-##' - forecast error: `e = obs - pred` at a sufficiently distant future time
-##' - estimate the point-based measure:
-##'   - mean absolute error: `mean(abs(e))`
-##'   - mean squared error: `mean((e)^2)`; similar to variance
-##'   - root mean squared error: `sqrt(mean((e)^2))`; similar to SD
-##'   - mean abs % error: `100 * mean(abs(e / k)`; scale independent if `k > 0`
-##'     `k` can be observations or another benchmark. for more info:
-##'     `https://www.youtube.com/watch?v=ek5xLEoQN3E`
+# point-based forecast evaluation
+# 
+#' given a forecast horizon, H:
+#' - forecast error: `e = obs - pred` at a sufficiently distant future time
+#' - estimate the point-based measure:
+#'   - mean absolute error: `mean(abs(e))`
+#'   - mean squared error: `mean((e)^2)`; similar to variance
+#'   - root mean squared error: `sqrt(mean((e)^2))`; similar to SD
+#'   - mean abs % error: `100 * mean(abs(e / k)`; scale independent if `k > 0`
+#'     `k` can be observations or another benchmark. for more info:
+#'     `https://www.youtube.com/watch?v=ek5xLEoQN3E`
 
-## interval-based forecast evaluation
-## the scaled interval score (SIS) evaluates forecasts based on deviation from
-## an interval of y (e.g., a credible interval)
-##' for more info, see: `https://doi.org/10.1371/journal.pcbi.1008618`
+# interval-based forecast evaluation
+# the scaled interval score (SIS) evaluates forecasts based on deviation from
+# an interval of y (e.g., a credible interval)
+#' for more info, see: `https://doi.org/10.1371/journal.pcbi.1008618`
 calculate_sis <- function(u, l, alpha, y) {
   sis <- case_when(l >= y & y <= u ~ u - l, # in the [l, u] interval
                    y < l ~ u - l + 2 / alpha * (l - y), # below the interval
                    y > u ~ u - l + 2 / alpha * (y - u)) # above the interval
 }
 
-## Probabilistic (i.e., distribution-based) forecast evaluation
-## 
-## rather than focusing on point-specific estimates of model performance, it's
-## better to look at the full forecast distribution rather than just a subset of
-## points
-## this what we've been doing when comparing forecasts with DRPS/CRPS!
-## DRPS/CRPS: Discrete/Continuous Ranked Probability Score
+# Probabilistic (i.e., distribution-based) forecast evaluation
+# 
+# rather than focusing on point-specific estimates of model performance, it's
+# better to look at the full forecast distribution rather than just a subset of
+# points
+# this what we've been doing when comparing forecasts with DRPS/CRPS!
+# DRPS/CRPS: Discrete/Continuous Ranked Probability Score
 plot(forecast(m_gam_ar))
 
-## for example, we only observe some values from a distribution, but we can
-## still estimate the model for the full estimated distribution!
-## the probabilities are conditional on the observed data and model parameters
+# for example, we only observe some values from a distribution, but we can
+# still estimate the model for the full estimated distribution!
+# the probabilities are conditional on the observed data and model parameters
 set.seed(20)
 d_probs <- tibble(y = seq(-4, 4, by = 0.01),
        dens = dnorm(y),
@@ -309,10 +310,10 @@ ggplot() +
                arrow = arrow(angle = 15, type = 'closed')) +
   ylab('Log(probability density)')
 
-## taking log(density):
-## - helps keep numbers more manageable
-## - moves operations to the additive scale
-## - can be sensitive to outliers (i.e., very negative log(density))
+# taking log(density):
+# - helps keep numbers more manageable
+# - moves operations to the additive scale
+# - can be sensitive to outliers (i.e., very negative log(density))
 
 # Continuous Ranked Probability Score
 # "-1" forces a flip in the pdf, making the observation the MLE value

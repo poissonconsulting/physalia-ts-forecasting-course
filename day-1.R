@@ -1,13 +1,13 @@
 # TODO: add intro to Bayes
 source('packages.R') # attach necessary packages
 
-## Introduction to time series and time series visualization ----
-## a simple time series: daily temperature values
+# Introduction to time series and time series visualization ----
+# a simple time series: daily temperature values
 data('airquality')
 ?airquality
 head(airquality) #' *NOTE:* temperature is in Fahrenheit degrees
 
-## clean up the data format
+# clean up the data format
 d_temp <- airquality %>%
   rename_with(stringr::str_to_snake, everything()) %>% # convert to snake_case
   mutate(date = as_date(paste0('1973-', month, '-', day)),
@@ -18,22 +18,22 @@ d_temp <- airquality %>%
   as_tibble()
 d_temp
 
-## plot the data
+# plot the data
 p_temp <-
   ggplot(d_temp, aes(date, temp)) +
   geom_point(alpha = 0.75) +
   labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
 p_temp
 
-## plot the data with a smooth model
+# plot the data with a smooth model
 p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
                      formula = y ~ s(x, k = 5))
 
-## plot the data with a wiggly model
+# plot the data with a wiggly model
 p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
                      formula = y ~ s(x, k = 50), n = 400)
 
-## plot the data with an extremely wiggly model
+# plot the data with an extremely wiggly model
 p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
                      formula = y ~ s(x, k = nrow(d_temp) - 1), n = 400,
                      method.args = list(gamma = 0.00001))
@@ -43,10 +43,10 @@ p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
 #' - what counts as a change in the time series?
 #' - what underlying process are we trying to estimate from the data?
 
-## some traditional time series models and their assumptions ----
-## traditional time series models often focus on discrete-time correlations
-## across previous observations, e.g.: at times t -3, t - 2, and t - 1.
-## example of a time series where values correlate with the previous value
+# some traditional time series models and their assumptions ----
+# traditional time series models often focus on discrete-time correlations
+# across previous observations, e.g.: at times t -3, t - 2, and t - 1.
+# example of a time series where values correlate with the previous value
 d_ar <- tibble(t = 1:1e3, z = rnorm(length(t)),
                zero = NA_real_, pos = NA_real_, neg = NA_real_)
 d_ar
@@ -71,9 +71,9 @@ ggplot(d_ar, aes(t, pos)) + geom_line(alpha = 0.5) + geom_point()
 # coefficient just above -1: series stays near starting point; oscillates a lot
 ggplot(d_ar, aes(t, neg)) + geom_line(alpha = 0.5) + geom_point()
 
-## diagnostics for these models are based on the Auto-Correlation Function (ACF)
-## and the Partial Auto-Correlation Function (PACF), which show estimated
-## correlations at different lags
+# diagnostics for these models are based on the Auto-Correlation Function (ACF)
+# and the Partial Auto-Correlation Function (PACF), which show estimated
+# correlations at different lags
 layout(matrix(1:6, ncol = 2))
 #' correlations between time points `t` and `t-l`
 acf(d_ar$zero)  # lag-1 ACF will always be 1, the rest are negligible
@@ -85,20 +85,20 @@ pacf(d_ar$pos)  # strong, positive correlation at lag 1 only
 pacf(d_ar$neg)  # strong, negative correlation at lag 1 only
 layout(1)
 
-##' the *ARIMA* model is a particularly common model. it is the combination of
-##' three discrete-time models:
-##' *AR*: AutoRegressive: observations are a function of previous values
-##' *MA*: Moving Average: error terms are a linear combination of previous values
-##' *I*: Integrated: AR & MA models apply to differences of consecutive values
-##' we won't be covering the integrated model in detail because it only requires
-##' applying the models to differences of the values. The number of differences
-##' is determined by the second number in the ARIMA(a, d, m) model.
-##' For example, an `ARIMA(2, 1, 3)` would have 2 AR coefficients, 1 difference,
-##' and 3 MA coefficients. In this case, for values `y_t`, an `I(1)` model would
-##' apply the AR and MA to `z_t = y_t - y_{t-1}`. nth-order differences remove
-##' trends that are approximately nth-degree polynomials: a 1st-order difference
-##' removes linear trends, while a 2nd-order difference removes parabolic trends
-##' an example of a 1st-order difference (see `?AirPassengers` for more info):
+#' the *ARIMA* model is a particularly common model. it is the combination of
+#' three discrete-time models:
+#' *AR*: AutoRegressive: observations are a function of previous values
+#' *MA*: Moving Average: error terms are a linear combination of previous values
+#' *I*: Integrated: AR & MA models apply to differences of consecutive values
+#' we won't be covering the integrated model in detail because it only requires
+#' applying the models to differences of the values. The number of differences
+#' is determined by the second number in the ARIMA(a, d, m) model.
+#' For example, an `ARIMA(2, 1, 3)` would have 2 AR coefficients, 1 difference,
+#' and 3 MA coefficients. In this case, for values `y_t`, an `I(1)` model would
+#' apply the AR and MA to `z_t = y_t - y_{t-1}`. nth-order differences remove
+#' trends that are approximately nth-degree polynomials: a 1st-order difference
+#' removes linear trends, while a 2nd-order difference removes parabolic trends
+#' an example of a 1st-order difference (see `?AirPassengers` for more info):
 layout(1:2)
 plot(AirPassengers)
 plot(diff(AirPassengers))
@@ -159,8 +159,8 @@ coef(m_arma)
 acf(resid(m_arma)); pacf(resid(m_arma))
 layout(1)
 
-## all three models predict that the data will be stationary and centered at the
-## intercept with some random variation over time
+# all three models predict that the data will be stationary and centered at the
+# intercept with some random variation over time
 n_preds <- 100
 
 preds <-
@@ -203,21 +203,21 @@ d_ts %>%
 
 #' see `?AirPassengers` for an example model that includes seasonal trends
 
-##' *NOTE:* processes are stationary if `sum(coefs)` < 1 (not intercept)
+#' *NOTE:* processes are stationary if `sum(coefs)` < 1 (not intercept)
 plot_process <- function(ar = c(0), ma = c(0), n = 1e3, return_values = FALSE) {
   out <- rep(NA_real_, n) # vector of values to return
   w <- rnorm(n)
   
   for(i in 1:n) {
-    ##' take `length(coefs)` previous observations
+    #' take `length(coefs)` previous observations
     ar_indices <- i - (length(ar):1)
     ma_indices <- i - (length(ma):1)
     
-    ##' negative and `integer(0)` indices cause issues
+    #' negative and `integer(0)` indices cause issues
     ar_indices[ar_indices <= 0] <- NA_integer_
     ma_indices[ma_indices <= 0] <- NA_integer_
     
-    ##' need to use `sum()` to drop the `NA`s
+    #' need to use `sum()` to drop the `NA`s
     out[i] <- sum(w[i], out[ar_indices] * ar, w[ma_indices] * ma,
                   na.rm = TRUE)
   }
@@ -259,31 +259,31 @@ plot_process(ma = c(700, 50))
 plot_process(ar = c(0.7, 0.2), ma = c(0.5, 0.3)) # stationary ARMA(2, 2)
 plot_process(ar = c(0.7, 0.3), ma = c(0.5, 0.3)) # non-stationary ARMA(2, 2)
 
-## applying the plots to the air temperature series ----
+# applying the plots to the air temperature series ----
 layout(t(1:2))
 acf(d_temp$temp) #' correlation of data pairs at a times `t` and `t+Lag`
 pacf(d_temp$temp) #' correl. between pairs, without previous lags' effects
-## ACF decays smoothly; high pacf value at lag 1, other values are small
-## AR(1) model is a good start
+# ACF decays smoothly; high pacf value at lag 1, other values are small
+# AR(1) model is a good start
 
-##' `y_t = 0.82 * y_{t-1} + 77.33`
+#' `y_t = 0.82 * y_{t-1} + 77.33`
 m_ar_temp <- arima(d_temp$temp, order = c(1, 0, 0))
 coef(m_ar_temp)
 acf(resid(m_ar_temp)); pacf(resid(m_ar_temp)) # residuals are ok
 layout(1)
 
-## strengths and limitations of ARMA models:
-## - because coefficient estimates depend on pairs of points, the models are
-##   robust to missing data, whether random or even missing sections. however,
-##   estimates are sensitive to sampling interval and data thinning (see below)
-## - AR and MA models can help understand the properties of the data, but they
-##   cannot be used to interpolate or estimate the mean trend in a time series
-##   other than the intercept term
-## - AR and MA models assume the models are stationary over time, so predictions
-##   past the range of the data are often not useful (if not in the short term)
-## - the models only work in discrete time with fixed sampling intervals
+# strengths and limitations of ARMA models:
+# - because coefficient estimates depend on pairs of points, the models are
+#   robust to missing data, whether random or even missing sections. however,
+#   estimates are sensitive to sampling interval and data thinning (see below)
+# - AR and MA models can help understand the properties of the data, but they
+#   cannot be used to interpolate or estimate the mean trend in a time series
+#   other than the intercept term
+# - AR and MA models assume the models are stationary over time, so predictions
+#   past the range of the data are often not useful (if not in the short term)
+# - the models only work in discrete time with fixed sampling intervals
 
-## ARMA models are sensitive to data thinning
+# ARMA models are sensitive to data thinning
 d_thin <-
   tibble(thinning = c(1, 10, 20, 30, 40, 50, 60), # thinning intervals
          data = map(thinning, \(.t) d_ts %>% filter(1:n() %% .t == 0) %>%
@@ -336,7 +336,7 @@ d_track <- tibble(thinning = 1:60,
                   }))
 d_track
 
-## plot the estimated speed for each sampling interval
+# plot the estimated speed for each sampling interval
 d_track %>%
   unnest(data) %>%
   filter(sampling_interval <= 540) %>%
@@ -347,18 +347,18 @@ d_track %>%
   geom_line() +
   ylab('SLD divided by time interval (m/s)')
 
-## estimated speed decreases substantially with sampling interval...
+# estimated speed decreases substantially with sampling interval...
 ggplot(d_track, aes(sampling_interval, mean_speed)) +
   geom_line() +
   labs(x = 'Sampling interval (seconds)',
        y = 'Straight-line displacement divided by time interval (m/s)')
 
-## ... which is not surprising since we are losing data on the complexity of the
-## tracks as we thin them. the issues compound if sampling intervals are
-## irregular. for more info, see:
-## - https://doi.org/10.1186/s40462-019-0177-1
-## - https://doi.org/10.1086/675504
-## - https://doi.org/10.1101/2025.07.17.665364
+# ... which is not surprising since we are losing data on the complexity of the
+# tracks as we thin them. the issues compound if sampling intervals are
+# irregular. for more info, see:
+# - https://doi.org/10.1186/s40462-019-0177-1
+# - https://doi.org/10.1086/675504
+# - https://doi.org/10.1101/2025.07.17.665364
 d_track %>%
   filter(thinning %in% c(1, 5, 10, 15, 30, 60)) %>%
   mutate(sampling_interval =
@@ -375,25 +375,25 @@ d_track %>%
   scale_x_continuous(name = 'x (meters)', breaks = (-3:3) * 100) +
   ylab('y (meters)')
 
-##' **break**
+#' **break**
 
-## GLMs and GAMs for ecological modelling ----
+# GLMs and GAMs for ecological modelling ----
 
-##' three main parts to a GLM/GAM:
-##' 1. *family* of distributions: distribution of response, Y
-##' 2. *linear predictor*: sum of coefficients multiplied by predictor variables
-##' 3. *link function*: connects linear predictor with parameter estimates
+#' three main parts to a GLM/GAM:
+#' 1. *family* of distributions: distribution of response, Y
+#' 2. *linear predictor*: sum of coefficients multiplied by predictor variables
+#' 3. *link function*: connects linear predictor with parameter estimates
 
-##' linear models are Gaussian GLMs:
-##' 1. family is Gaussian with mean `mu` and variance `sigma^2`
-##' 2. linear predictor is `beta_0 + x_1 * beta_1 + ...`
-##' 3. link function is the identity function: `I(c) = c`: input = output
+#' linear models are Gaussian GLMs:
+#' 1. family is Gaussian with mean `mu` and variance `sigma^2`
+#' 2. linear predictor is `beta_0 + x_1 * beta_1 + ...`
+#' 3. link function is the identity function: `I(c) = c`: input = output
 
-##' *fit the model to the data, not the data to the model!*
-##' choose a family of distributions and link function based on:
-##' 1. the possible values of the response variable
-##' 2. the mean-variance relationship
-##' 3. any additional considerations about the variance, such as overdispersion
+#' *fit the model to the data, not the data to the model!*
+#' choose a family of distributions and link function based on:
+#' 1. the possible values of the response variable
+#' 2. the mean-variance relationship
+#' 3. any additional considerations about the variance, such as overdispersion
 
 ?mvgam::mvgam_families #' families supported by `{mvgam}`
 #' `gaussian()` for real-valued data
@@ -413,26 +413,26 @@ d_track %>%
 #' `?brms::family.brmsfit` for families supported by `{mgcv}` or `{brms}` but
 #' not necessarily supported by `{mvgam}`.
 
-##' *choose a link function based on the possible values for the distribution*
-##' unbounded: identity; `I(-Inf, Inf) = (-Inf, Inf)`
-##' `Y >= 0` or `Y > 0`: `log(0, Inf) = (-Inf, Inf)`
-##' `0 <= Y <= 1`: `logit(0, 1) = log(odds(0, 1)) = log(0,Inf) = (-Inf,Inf)`
-##' there are other options, but these are generally sufficient (esp. with GAMs)
+#' *choose a link function based on the possible values for the distribution*
+#' unbounded: identity; `I(-Inf, Inf) = (-Inf, Inf)`
+#' `Y >= 0` or `Y > 0`: `log(0, Inf) = (-Inf, Inf)`
+#' `0 <= Y <= 1`: `logit(0, 1) = log(odds(0, 1)) = log(0,Inf) = (-Inf,Inf)`
+#' there are other options, but these are generally sufficient (esp. with GAMs)
 
-##' *note:* link functions introduce two new terms:
-##' - *response scale*: the original response values; e.g., (0, Inf), (0, 1)
-##' - *link scale*: the transformed response values; generally (-Inf, Inf)
+#' *note:* link functions introduce two new terms:
+#' - *response scale*: the original response values; e.g., (0, Inf), (0, 1)
+#' - *link scale*: the transformed response values; generally (-Inf, Inf)
 
-##' *note:* link function is applied to the *mean*, not to the data directly
+#' *note:* link function is applied to the *mean*, not to the data directly
 
-##' `E(Y) = mu`
-##' `g(mu) = eta = b_0 + b_1 * x_1 + b_2 * x_2`
-##' `mu = g^{-1}(eta) = g^{-1}(b_0 + b_1 * x_1 + b_2 * x_2)`
+#' `E(Y) = mu`
+#' `g(mu) = eta = b_0 + b_1 * x_1 + b_2 * x_2`
+#' `mu = g^{-1}(eta) = g^{-1}(b_0 + b_1 * x_1 + b_2 * x_2)`
 
-## how can we model data that has irregular sampling over time?
-##' *NOTE:* many of the `{mvgam}` plots assume discrete-time sampling, so the
-##' missing observations should be `NA` rather than missing the full row, as
-##' long as none of the predictors have `NA` values.
+# how can we model data that has irregular sampling over time?
+#' *NOTE:* many of the `{mvgam}` plots assume discrete-time sampling, so the
+#' missing observations should be `NA` rather than missing the full row, as
+#' long as none of the predictors have `NA` values.
 d_temp_missing <- d_temp %>%
   mutate(time = 1:n()) %>%
   mutate(temp = if_else(month(date) == 6, NA_real_, temp),
@@ -444,35 +444,35 @@ ggplot(d_temp_missing, aes(date, temp)) +
   geom_point(alpha = 0.75) +
   labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
 
-## focus on rates of change and trends over time rather than changes over steps
-## in discrete time
+# focus on rates of change and trends over time rather than changes over steps
+# in discrete time
 
-##' fitting a *GLM* with a polynomial term
-##' The terms can't be functions of each other, so we need to add columns of the
-##' polynomial that are independent of each other (i.e., orthogonal) to avoid
-##' complete collinearity and non-identifiability issues when fitting.
+#' fitting a *GLM* with a polynomial term
+#' The terms can't be functions of each other, so we need to add columns of the
+#' polynomial that are independent of each other (i.e., orthogonal) to avoid
+#' complete collinearity and non-identifiability issues when fitting.
 d_temp_missing <- d_temp_missing %>%
   bind_cols(.,
             poly(.$doy, degree = 3) %>%
               as.data.frame() %>%
               rename(doy_1 = 1, doy_2 = 2, doy_3 = 3))
-d_temp_missing ##' note the `NA`s in the `temp` column
+d_temp_missing #' note the `NA`s in the `temp` column
 
 m_temp_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
-                     family = gaussian(), ##' *NOTE:* default family is Poisson
+                     family = gaussian(), #' *NOTE:* default family is Poisson
                      data = d_temp_missing)
 
-##' since `{mvgam}` fits Bayesian models with `Stan`, we should check that all
-##' chains converged properly: check `Rhat`, `n_eff`, and Stan MCMC diagnostics
-##' each chain is one of the "paths" the model took to estimate the parameters
-##' the model will spend more time near the better parameter estimates and less
-##' near unlikely values, which estimates the posterior distribution.
-##' ideally, all chains should be similar and undistiguishable.
+#' since `{mvgam}` fits Bayesian models with `Stan`, we should check that all
+#' chains converged properly: check `Rhat`, `n_eff`, and Stan MCMC diagnostics
+#' each chain is one of the "paths" the model took to estimate the parameters
+#' the model will spend more time near the better parameter estimates and less
+#' near unlikely values, which estimates the posterior distribution.
+#' ideally, all chains should be similar and undistiguishable.
 summary(m_temp_poly)
 mcmc_plot(m_temp_poly, type = 'trace', variable = rownames(coef(m_temp_poly)))
 plot(m_temp_poly, type = 'residuals') #' can also use `plot_mvgam_resids()`
 
-## can add predictions to the data...
+# can add predictions to the data...
 d_temp_missing %>%
   bind_cols(predict(m_temp_poly, type = 'response') %>%
               as.data.frame() %>%
@@ -481,15 +481,15 @@ d_temp_missing %>%
                      q2.5_poly = Q2.5,
                      q97.5_poly = Q97.5))
 
-## ... but there are also many useful built-in functions
+# ... but there are also many useful built-in functions
 plot(hindcast(m_temp_poly, type = 'response')) # uncertainty in Y
 plot(hindcast(m_temp_poly, type = 'link')) # uncertainty in mu on link scale
 plot(hindcast(m_temp_poly, type = 'expected')) # uncertainty in mu
 plot(m_temp_poly, type = 'smooths') # only works with GAMs (see below)
 
-##' fitting a *GAM* with a smooth term
-##' the smooth term is created using the `s()` function
-##' greater model complexity requires a bit more sampling and burnin
+#' fitting a *GAM* with a smooth term
+#' the smooth term is created using the `s()` function
+#' greater model complexity requires a bit more sampling and burnin
 m_temp_gam <- mvgam(temp ~ s(doy, k = 10, bs = 'cr'),
                     family = gaussian(), data = d_temp_missing,
                     parallel = TRUE, burnin = 1e3, samples = 750,
@@ -498,9 +498,9 @@ m_temp_gam <- mvgam(temp ~ s(doy, k = 10, bs = 'cr'),
                     #' - `adapt_delta`: target average proposal acceptance prob. 
                     control = list(max_treedepth = 10, adapt_delta = 0.9))
 
-##' `summary()` looks a bit different from the one for the GLM:
-##' - `s(doy)` has `k - 1` coefficients
-##' - each coefficient is multiplied by the respective basis function
+#' `summary()` looks a bit different from the one for the GLM:
+#' - `s(doy)` has `k - 1` coefficients
+#' - each coefficient is multiplied by the respective basis function
 summary(m_temp_gam)
 coef(m_temp_gam$mgcv_model) # model coefficients
 coef(m_temp_gam$mgcv_model)[-1] #' check `s(doy)` terms only
@@ -527,15 +527,15 @@ plot(hindcast(m_temp_gam, type = 'response')) # uncertainty in Y
 plot(hindcast(m_temp_gam, type = 'link')) # uncertainty in mu on link scale
 plot(hindcast(m_temp_gam, type = 'expected')) # identity link: same as above
 
-##' smooths are centered at 0
+#' smooths are centered at 0
 plot(m_temp_gam, type = 'smooths') #' model terms; == `plot_mvgam_smooth()`
 
 plot(m_temp_gam, type = 'residuals') #' model diagnostics; `plot_mvgam_resids()`
 
-##' **break**
+#' **break**
 
 # Temporal random effects and temporal residual correlation structures ----
-## fit a GAM with a random effect of week
+# fit a GAM with a random effect of week
 ggplot(d_temp_missing) + geom_point(aes(week_re, temp), alpha = 0.3)
 
 m_temp_re <- mvgam(temp ~ s(week_re, bs = 're'), family = gaussian(),
@@ -545,11 +545,11 @@ draw(m_temp_re$mgcv_model) # each week has a coefficient
 
 plot(hindcast(m_temp_re, type = 'response')) # response scale; uncertainty in Y
 
-##' *Q:* how do we choose the window width? is 2 weeks or 10 days better than 7?
+#' *Q:* how do we choose the window width? is 2 weeks or 10 days better than 7?
 
-##' smooth terms in GAMs can be thought of as a continuous version of these
-##' discrete-time random effects. The random effects in the GAMs are the basis
-##' coefficients
+#' smooth terms in GAMs can be thought of as a continuous version of these
+#' discrete-time random effects. The random effects in the GAMs are the basis
+#' coefficients
 plot_grid(
   draw(basis(s(doy, bs = 'cr'), data = d_temp_missing)), # default cubic basis
   draw(basis(m_temp_gam$mgcv_model), residuals = TRUE) + # fitted cubic basis
@@ -558,8 +558,8 @@ plot_grid(
               inherit.aes = FALSE),
   ncol = 1)
 
-##' smooth terms are better at dealing with gaps and irregular sampling. they
-##' also don't require choosing a window size, but you do need to choose `k`.
+#' smooth terms are better at dealing with gaps and irregular sampling. they
+#' also don't require choosing a window size, but you do need to choose `k`.
 ggplot() +
   geom_line(aes(doy, Estimate, color = 's(doy)'),
             bind_cols(d_temp, predict(m_temp_gam, d_temp)),
@@ -571,7 +571,7 @@ ggplot() +
   scale_color_highcontrast(name = 'Model') +
   theme(legend.position = 'top')
 
-##' add an `AR(1)` component
+#' add an `AR(1)` component
 m_temp_ar <- mvgam(formula = temp ~ 0,
                    trend_formula = ~ s(doy, k = 10, bs = 'cr'),
                    trend_model = AR(1),
