@@ -6,7 +6,7 @@ source('packages.R') # attach necessary packages
 #' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
 #' 
 #' but estimating the process model requires us to work backwards:
-#' - model the space of possible states (i.e., outcomes, responses)
+#' - model the space of possible states (i.e., true outcomes, true responses)
 #' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
 #' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
 #' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
