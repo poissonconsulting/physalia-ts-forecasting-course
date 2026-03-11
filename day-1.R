@@ -146,7 +146,7 @@ ggplot(d_ts, aes(t, ma_1)) +
 acf(d_ts$ma_1, ci = 0.99); pacf(d_ts$ma_1, ci = 0.99)
 m_ma <- arima(d_ts$ma_1, order = c(0, 0, 1))
 coef(m_ma)
-acf(resid(m_ma)); pacf(resid(m_ma))
+acf(resid(m_ma)); pacf(resid(m_ma)) # residuals don't have appreciable signals
 
 #' *ARMA(1, 1) process*: `AR(1) + MA(1)`
 ggplot(d_ts, aes(t, arma_11)) +
@@ -156,7 +156,7 @@ ggplot(d_ts, aes(t, arma_11)) +
 acf(d_ts$arma_11, ci = 0.99); pacf(d_ts$arma_11, ci = 0.99) # AR + MA plots
 m_arma <- arima(d_ts$arma_11, order = c(1, 0, 1))
 coef(m_arma)
-acf(resid(m_arma)); pacf(resid(m_arma))
+acf(resid(m_arma)); pacf(resid(m_arma)) # ARMA models can be hard to capture
 layout(1)
 
 # all three models predict that the data will be stationary and centered at the
