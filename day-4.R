@@ -71,11 +71,6 @@ d_test <- filter(pigments, year >= 1950) %>%
              by = c('year', 'time', 'core', 'series')) %>%
   arrange(time, series)
 
-stop("Added rounding above to make forecasts more usable")
-d_test %>%
-  select(! series) %>%
-  pivot_wider(names_from = core, values_from = diatox)
-
 ggplot(mapping = aes(year, diatox, color = core)) +
   geom_point(data = d_train, alpha = 0.4) +
   geom_vline(xintercept = 1950, lty = 'dashed') +
@@ -84,13 +79,13 @@ ggplot(mapping = aes(year, diatox, color = core)) +
   ylim(c(0, NA))
 
 # fit a null model
-m_null <- mvgam(formula = diatox ~ 1,
+m_null <- mvgam(formula = diatox ~ s(core, bs = 're'),
                 family = Gamma(link = 'log'),
                 data = d_train,
                 newdata = d_test,
                 chains = 4,
                 burnin = 500,
-                samples = 500,
+                sample = 750,
                 parallel = TRUE)
 
 # unsurprisingly, the fit is horrible
@@ -111,7 +106,7 @@ m_gam <- mvgam(formula = diatox ~ 0,
                newdata = d_test,
                chains = 4,
                burnin = 500,
-               samples = 500,
+               samples = 750,
                parallel = TRUE)
 summary(m_gam) # no issues with diagnostics
 plot(m_gam) # likely autocorrelation at lag 1
@@ -141,7 +136,7 @@ m_gam_ar1 <- mvgam(formula = diatox ~ 0,
                    newdata = d_test,
                    chains = 4,
                    burnin = 500,
-                   samples = 500,
+                   sample = 750,
                    parallel = TRUE)
 
 summary(m_gam_ar1) # no issues with diagnostics
@@ -174,43 +169,43 @@ plot_grid(plot(forecast(m_gam_ar1), series = 1),
 #' - `y_{t-1}` is the vector of `s` observations at time `t-1`,
 #' - `A` is the `s * s` matrix of correlations for `y_t` and `y_{t-1}` values,
 #' - `Σ` is the covariance matrix that determines the correlation across errors
+#' can safely ignore messages about rejections of initial values
 if(file.exists('models/day-4-m_gam_var1.rds')) {
   m_gam_var1 <- readRDS('models/day-4-m_gam_var1.rds')
 } else {
   #' TODO: add better priors. see `https://doi.org/10.3390/e19100555`
-  # fits in ~ 20 minutes
+  # fits in ~ 10 minutes
   m_gam_var1 <- mvgam(formula = diatox ~ 0,
-                      trend_formula = ~
-                        s(year, bs = 'tp', k = 15) +
+                      trend_formula = ~ # global smooth term explained by VAR(1)
                         s(year, core, bs = 'fs', k = 15),
                       trend_model = VAR(1), # vector AR(1) process
-                      noncentred = FALSE, # cannot use noncentering for VAR() models
+                      noncentred = FALSE, # cannot use if using for VAR() models
+                      # priors = ,
                       family = Gamma(link = 'log'),
                       data = d_train,
                       newdata = d_test,
                       chains = 4,
                       burnin = 500,
-                      samples = 500,
+                      sample = 750,
                       control = list(max_treedepth = 20, adapt_delta = 0.9),
                       parallel = TRUE)
   saveRDS(m_gam_var1, 'models/day-4-m_gam_var1.rds')
 }
 
-# TODO: need to review comments below
-# summary(m_gam_var1)
-# plot(m_gam_var1)
-# draw(m_gam_var1$trend_mgcv_model)
-# 
-# plot_grid(plot(m_gam_var1, type = 'trend', series = 1),
-#           plot(m_gam_var1, type = 'trend', series = 2),
-#           plot(m_gam_var1, type = 'trend', series = 3),
-#           plot(m_gam_var1, type = 'trend', series = 4))
-# 
-# # 
-# plot_grid(plot(forecast(m_gam_var1), series = 1),
-#           plot(forecast(m_gam_var1), series = 2),
-#           plot(forecast(m_gam_var1), series = 3),
-#           plot(forecast(m_gam_var1), series = 4))
+summary(m_gam_var1)
+plot(m_gam_var1) # no appreciable issues with ACF or pACF
+draw(m_gam_var1$trend_mgcv_model)
+
+plot_grid(plot(m_gam_var1, type = 'trend', series = 1),
+          plot(m_gam_var1, type = 'trend', series = 2),
+          plot(m_gam_var1, type = 'trend', series = 3),
+          plot(m_gam_var1, type = 'trend', series = 4))
+
+#
+plot_grid(plot(forecast(m_gam_var1), series = 1),
+          plot(forecast(m_gam_var1), series = 2),
+          plot(forecast(m_gam_var1), series = 3),
+          plot(forecast(m_gam_var1), series = 4))
 
 #' *ADD B SPLINE TERMS?*
 # trend_formula = ~
@@ -225,55 +220,58 @@ if(file.exists('models/day-4-m_gam_var1.rds')) {
 #' - `z_t` is a vector of dynamic factor estimates at time `t`,
 #' - `θ` is a matrix of loading coefficients that controls how each series in
 #'   `y` depends on the factors in `z`
-m_df <- mvgam(formula = diatox ~ 1,
-              use_lv = TRUE, n_lv = 2,
+#' for more info, see:
+#' - `https://www.youtube.com/watch?v=FMLh8c_Sa8s`
+#' - `cran.r-project.org/web/packages/dfms/vignettes/dynamic_factor_models.pdf`
+#' note: can ignore warning about integer division. it's caused by forced
+#' rounding from a decimal to an integer in the stan code
+m_df <- mvgam(formula = diatox ~ s(core, bs = 're'), # assume stationarity
+              use_lv = TRUE, n_lv = 4, # needs to be chosan manually
               trend_model = AR(1),
-              noncentred = FALSE,
+              noncentred = FALSE, # since trend formula is empty
               family = Gamma(link = 'log'),
               data = d_train,
               newdata = d_test,
               chains = 4,
               burnin = 500,
-              samples = 500,
+              sample = 750,
               control = list(max_treedepth = 20, adapt_delta = 0.9),
               parallel = TRUE)
 
 summary(m_df) # no issues with diagnostics
-plot(m_df) # no appreciable autocorrelation at lag 1
-m_df$trend_mgcv_model # there is no model now
+plot(m_df) # strong but uncertain autocorrelation at lag 1
+m_df$trend_mgcv_model # there is no mgcv model now
 
-# forecasts are quite poor because they depend on available info...
+# forecasts are quite poor because they assume stationarity...
 plot_grid(plot(m_df, type = 'trend', series = 1),
           plot(m_df, type = 'trend', series = 2),
           plot(m_df, type = 'trend', series = 3),
           plot(m_df, type = 'trend', series = 4))
 
-# ... but they do follow the data closely, for being such a simple model
-# but note the high estimates for core 1 in the early 1800s
+# ... but the trends do follow the data closely, for being such a simple model
 plot_grid(plot(forecast(m_df), series = 1),
           plot(forecast(m_df), series = 2),
           plot(forecast(m_df), series = 3),
           plot(forecast(m_df), series = 4))
 
 # add a GAM term
-m_gam_df <- mvgam(formula = diatox ~ 0,
-                  trend_formula = ~
-                    s(year, bs = 'tp', k = 15) +
+m_gam_df <- mvgam(formula = diatox ~ 1,
+                  trend_formula = ~ # global smooth term explained by DFA terms
                     s(year, core, bs = 'fs', k = 15),
-                  use_lv = TRUE, n_lv = 2,
+                  use_lv = TRUE, n_lv = 4,
                   trend_model = AR(1),
-                  noncentred = TRUE, # can use noncentering for DF models
+                  noncentred = TRUE, #' since `trend_formula` is not empty
                   family = Gamma(link = 'log'),
                   data = d_train,
                   newdata = d_test,
                   chains = 4,
                   burnin = 500,
-                  samples = 500,
+                  sample = 750,
                   control = list(max_treedepth = 20, adapt_delta = 0.9),
                   parallel = TRUE)
 
 summary(m_gam_df) # no issues with diagnostics
-plot(m_gam_df) # no appreciable autocorrelation at lag 1
+plot(m_gam_df) # no appreciable autocorrelations
 draw(m_gam_df$trend_mgcv_model) # terms are again quite smooth
 
 # predictions are now tighter and more informed because they depend on
@@ -290,12 +288,16 @@ plot_grid(plot(forecast(m_gam_df), series = 1),
           plot(forecast(m_gam_df), series = 4))
 
 # other element of the list is a list of posterior correlations
-lv_correlations(object = m_df)$mean_correlations
-lv_correlations(object = m_gam_df)$mean_correlations
+lv_correlations(object = m_df)$mean_correlations # strong correlations if no GAM
+lv_correlations(object = m_gam_df)$mean_correlations # moderate for 2, 3, 4
 
-# adding the GAM reduced the magnitude of most coefficients
+# adding the GAM reduced the magnitude of most coefficients because it explains
+# the trends over time
 abs(lv_correlations(object = m_gam_df)$mean_correlations) <
   abs(lv_correlations(object = m_df)$mean_correlations)
+
+# but correlations are still moderately strong for (2, 3), (2, 4), and (3, 4)
+lv_correlations(object = m_gam_df)$mean_correlations > 0.3
 
 #' FIXME: scores are unreliable because the null model is listed as the best one
 #' need to see which data point(s) are causing the values to be unreliable
@@ -303,10 +305,10 @@ loo_compare(m_null, m_gam, m_gam_ar1, m_gam_var1, m_df, m_gam_df)
 
 # advantages of VAR processes:
 # - can use for assessing whether one series can predict another (often called
-#   "Granger causality", but it's not causality -- "precedence" is better)
+#   "Granger causality", but it's not causality -- "precedence" is more correct)
 # - can allow us to develop complex correlations across many different variables
 #   across time
-# - can be very instable and data-hungry
+# - can be very unstable and data-hungry
 # advantages of DF models:
 # - can explain complex models with very few terms
 # - can be hard to interpret
@@ -346,12 +348,61 @@ loo_compare(m_null, m_gam, m_gam_ar1, m_gam_var1, m_df, m_gam_df)
 #' but it relies on a summary (`F'`) of the forecasts for a given time, so it
 #' does not account for forecast sharpness or calibration
 
+# AR, VAR, and DFA models only account for stochastic component
+# we can extend the penalty for the GAM using b-splines
+# but we need separate smooths for each core because fs terms can't use bs bases
+# b-splines can be useful, but extrapolating with GAMs is hard if predictors
+# aren't truly deterministic (i.e., not a smooth of time)
+#' for more info: `fromthebottomoftheheap.net/2020/06/03/extrapolating-with-gams/`
+m_gam_ar1_bs <- mvgam(formula = diatox ~ 0,
+                      trend_formula = ~
+                        core + #' `by` smooths require explicit intercepts
+                        s(year, by = core, bs = 'bs', m = c(3, 2), k = 15),
+                      knots = list(year = c(1800, 2010)),
+                      trend_model = AR(1), # autoregressive 1 process
+                      noncentred = TRUE,
+                      family = Gamma(link = 'log'),
+                      data = d_train,
+                      newdata = d_test,
+                      chains = 4,
+                      burnin = 500,
+                      sample = 750,
+                      parallel = TRUE)
+
+summary(m_gam_ar1_bs) # no issues with diagnostics
+plot(m_gam_ar1_bs) # no appreciable autocorrelations
+draw(m_gam_ar1_bs$trend_mgcv_model) # each term has its own smoothness parameter
+
+# predictions are now tighter and more informed because they depend on
+# time-varying coefficients (i.e., the GAM portion)
+plot_grid(plot(m_gam_ar1_bs, type = 'trend', series = 1),
+          plot(m_gam_ar1_bs, type = 'trend', series = 2),
+          plot(m_gam_ar1_bs, type = 'trend', series = 3),
+          plot(m_gam_ar1_bs, type = 'trend', series = 4))
+
+# predictions are similar to previous models and still not great
+plot_grid(plot(forecast(m_gam_ar1_bs), series = 1),
+          plot(forecast(m_gam_ar1_bs), series = 2),
+          plot(forecast(m_gam_ar1_bs), series = 3),
+          plot(forecast(m_gam_ar1_bs), series = 4))
+
+#' `m_gam_ar1` has much lower uncertainty
+plot_grid(plot(forecast(m_gam_ar1), series = 1),
+          plot(forecast(m_gam_ar1), series = 2),
+          plot(forecast(m_gam_ar1), series = 3),
+          plot(forecast(m_gam_ar1), series = 4))
+
 # compare models based on their forecast scores
 models <-
-  tibble(name = c('null', 'GAM only', 'GAM with AR(1)', # 'GAM with VAR(1)',
-                  'DF(2)', 'GAM with DF(2)'),
-         model = list(m_null, m_gam, m_gam_ar1, #m_gam_var1,
-                      m_df, m_gam_df),
+  tibble(name = factor(c('null', 'GAM only', 'GAM with AR(1)', 'GAM with VAR(1)',
+                         'AR(1) and DF(2)', 'GAM with AR(1) and DF(2)',
+                         'GAM with AR(1) and b-splines'),
+                       levels = c('null', 'AR(1) and DF(4)', 'GAM only',
+                                  'GAM with AR(1)', 'GAM with VAR(1)',
+                                  'GAM with AR(1) and DF(4)',
+                                  'GAM with AR(1) and b-splines')),
+         model = list(m_null, m_gam, m_gam_ar1, m_gam_var1,
+                      m_df, m_gam_df, m_gam_ar1_bs),
          forecast = map(model, function(.m) forecast(.m)),
          scores = map(forecast, function(.f) {
            tibble(
@@ -373,6 +424,5 @@ models %>%
   facet_grid(type ~ ., scales = 'free_y') +
   geom_point() +
   geom_smooth(method = 'gam', formula = y ~ s(x), se = FALSE) +
-  scale_color_bright() +
-  scale_fill_bright() +
-  theme(legend.position = 'top')
+  scale_color_bright(name = 'Model') +
+  scale_fill_bright(name = 'Model')
