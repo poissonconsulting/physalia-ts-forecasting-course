@@ -124,7 +124,7 @@ ggplot(d_ts, aes(t, w)) +
   geom_line()
 
 layout(1:2)
-acf(d_ts$w, ci = 0.99) # first lag-0 AR will always be at 1
+acf(d_ts$w, ci = 0.99) # lag-0 AR will always be 1
 pacf(d_ts$w, ci = 0.99) # no appreciable partial correlations
 arima(d_ts$w, order = c(0, 0, 0)) %>% coef()
 
