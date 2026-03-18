@@ -1,4 +1,3 @@
-# TODO: add intro to Bayes
 source('packages.R') # attach necessary packages
 
 # Introduction to time series and time series visualization ----
@@ -429,7 +428,114 @@ d_track %>%
 #' `g(mu) = eta = b_0 + b_1 * x_1 + b_2 * x_2`
 #' `mu = g^{-1}(eta) = g^{-1}(b_0 + b_1 * x_1 + b_2 * x_2)`
 
-# how can we model data that has irregular sampling over time?
+# fitting models with `{mvgam}` ----
+ggplot(d_temp, aes(date, temp)) +
+  geom_point(alpha = 0.75) +
+  labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
+
+#' how models are fit in `{mvgam}`: a quick intro to Bayesian modeling
+#' - Bayesians view knowledge as a constantly updating set of information
+#' - before fitting any models or viewing new data, we have some *prior beliefs*
+#' - by observing some data, we can find the *most likely parameter values* for
+#'   that specific dataset and model
+#' - we can then update our prior knowledge state with the new data to produce a
+#'   *posterior* knowledge state
+#' - choose distributions that include sensible parameters; prevent impossible
+#'   parameter values, but don't force a specific hypothesis. for more info:
+#' ..- `https://doi.org/10.3390/e19100555`
+#' ..- `https://www.youtube.com/watch?v=ztbYkBPDOgU`
+#' 
+#' can get priors from `get_mvgam_priors()` without fitting a model
+#' ensure to specify family and link scale so coefficients on the right scale
+get_mvgam_priors(temp ~ doy, data = d_temp, family = gaussian())
+#' uses `brms::get_prior()` to generate uninformative priors
+
+#' to check whether priors are reasonable, we can use prior predictive checks:
+#' - generate random coefficients by sampling the priors
+#' - equivalent to checking whether our prior beliefs make sense
+b1_prior_samples <- 79 + 8.9 * rt(n = 1e4, df = 3) # student_t(nu, mu, sigma)
+b2_prior_samples <- 0 + 2 * rt(n = length(b1_prior_samples), df = 3)
+
+#' prior for `(Intercept)` is for `temp` for `mean(doy)`, not when `doy = 0`
+#' thus the prior for `(Intercept)` is close to `mean(temp)`
+#' we will see why this is useful once we fit GAMs
+#' TODO: fit a GAM to show why this is useful
+mean(d_temp$temp)
+
+# priors are quite uninformative (wide)
+plot_grid(
+  ggplot() +
+    geom_histogram(aes(b1_prior_samples), fill = "grey", color = "black") +
+    xlab("Prior for (Intercept)"),
+  ggplot() +
+    geom_histogram(aes(b2_prior_samples), fill = "grey", color = "black") +
+    xlab("Prior for doy effect"),
+  ncol = 1
+)
+
+# prior slopes are too steep
+ggplot() +
+  geom_abline(intercept = b1_prior_samples[1:1000],
+              slope = b2_prior_samples[1:1000],
+              color = 'red3', alpha = 0.1) +
+  geom_point(aes(doy - mean(doy), temp), d_temp)
+
+#' can also simulate priors using `{mvgam}`
+#' *NOTE:* `burnin` is ignored if `prior_simulation = TRUE`
+m_temp_prior <- mvgam(temp ~ doy, #' model is `mu = b[1] + b[2] * doy`
+                      family = gaussian(), #' *NOTE:* default family is Poisson
+                      data = d_temp, prior_simulation = TRUE, samples = 2000,
+                      silent = 2)
+
+plot_grid(
+  ggplot() +
+    geom_histogram(aes(m_temp_prior$model_output@sim$samples[[1]]$`b[1]`),
+                   fill = "grey", color = "black") +
+    xlab("Prior for (Intercept)"),
+  ggplot() +
+    geom_histogram(aes(m_temp_prior$model_output@sim$samples[[1]]$`b[2]`),
+                   fill = "grey", color = "black") +
+    xlab("Prior for doy effect"),
+  ncol = 1
+)
+
+ggplot() +
+  geom_abline(intercept = m_temp_prior$model_output@sim$samples[[1]]$`b[1]`,
+              slope = m_temp_prior$model_output@sim$samples[[1]]$`b[2]`,
+              color = 'red3', alpha = 0.1) +
+  #' *NOTE:* `(Intercept)` is for `temp` for mean `doy`, not `temp` when `doy = 0`
+  geom_point(aes(doy - mean(doy), temp), d_temp)
+
+#' fitting a simple GLM
+#' TODO: add explanations of:
+#' - how priors are used for sampling
+#' - how likelihood is estimated
+#' - how chains and MCMC work
+#' - how posterior is calculated
+m_temp <- mvgam(temp ~ doy,
+                family = gaussian(),
+                data = d_temp, samples = 1000, burnin = 1000)
+
+# posterior distributions are much narrower than priors, so the data were more
+# informative than the prior
+layout(matrix(1:4, ncol = 2, byrow = TRUE))
+hist(b1_prior_samples, main = "Prior for intercept")
+hist(b2_prior_samples, main = "Prior for intercept")
+hist(m_temp$model_output@sim$samples[[1]]$`b[1]`, main = "Est. intercept")
+hist(m_temp$model_output@sim$samples[[1]]$`b[2]`, main = "Est. slope")
+layout(1)
+
+ggplot() +
+  geom_abline(intercept = m_temp$model_output@sim$samples[[1]]$`b[1]`,
+              slope = m_temp$model_output@sim$samples[[1]]$`b[2]`,
+              color = 'red3', alpha = 0.1) +
+  #' *NOTE:* `(Intercept)` is for `temp` for mean `doy`, not `temp` when `doy = 0`
+  geom_point(aes(doy, temp), d_temp)
+
+# how can we model data that have irregular sampling over time? ----
+# with irregular sampling, it may help to focus on rates of change and trends
+# over time rather than changes over steps in discrete time
+
 #' *NOTE:* many of the `{mvgam}` plots assume discrete-time sampling, so the
 #' missing observations should be `NA` rather than missing the full row, as
 #' long as none of the predictors have `NA` values.
@@ -439,15 +545,14 @@ d_temp_missing <- d_temp %>%
          temp = if_else(time %in% sample(time, size = n() / 2),
                         NA_real_, temp)) %>%
   arrange(date)
+d_temp_missing #' note the `NA`s in the `temp` column
 
 ggplot(d_temp_missing, aes(date, temp)) +
   geom_point(alpha = 0.75) +
   labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
 
-# focus on rates of change and trends over time rather than changes over steps
-# in discrete time
-
-#' fitting a *GLM* with a polynomial term
+# TODO: repeat prior predictive check to see how unruly the predictions are
+#' fitting a GLM with a polynomial term
 #' The terms can't be functions of each other, so we need to add columns of the
 #' polynomial that are independent of each other (i.e., orthogonal) to avoid
 #' complete collinearity and non-identifiability issues when fitting.
@@ -456,11 +561,10 @@ d_temp_missing <- d_temp_missing %>%
             poly(.$doy, degree = 3) %>%
               as.data.frame() %>%
               rename(doy_1 = 1, doy_2 = 2, doy_3 = 3))
-d_temp_missing #' note the `NA`s in the `temp` column
 
 m_temp_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
                      family = gaussian(), #' *NOTE:* default family is Poisson
-                     data = d_temp_missing)
+                     data = d_temp_missing, samples = 1000, burnin = 1000)
 
 #' since `{mvgam}` fits Bayesian models with `Stan`, we should check that all
 #' chains converged properly: check `Rhat`, `n_eff`, and Stan MCMC diagnostics
