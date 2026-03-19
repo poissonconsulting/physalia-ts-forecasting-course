@@ -24,14 +24,48 @@ air_passengers <-
          month = round((dec_date - year) * 12) + 1, # to ensure January is 1
          passengers = as.numeric(AirPassengers)) # in thousands
 
-data_train <- filter(air_passengers, year <= 1955)
+air_passengers <- mutate(air_passengers, lag_12_passengers = lag(passengers, 12))
+data_train <- filter(air_passengers, year <= 1955) %>%
+  filter(! is.na(lag_12_passengers)) # lagged value before 1st observation is NA
 data_test <- filter(air_passengers, year > 1955)
+
+m_gam <- mvgam(formula = passengers ~ 0, # no error in observation process
+               trend_formula = ~
+                 log(lag_12_passengers) + # since we are on the log link scale
+                 s(year, k = 5, bs = "tp") +
+                 s(month, k = 10, bs = "cc"),
+               trend_model = "None",
+               noncentred = TRUE, # use a noncentered AR(1) model
+               knots = list(month = c(0.5, 12.5)),
+               family = poisson(link = "log"),
+               data = data_train,
+               newdata = data_test, # calculate forecast while fitting
+               chains = 4,
+               burnin = 750,
+               samples = 500,
+               parallel = TRUE, silent = 2)
+
+summary(m_gam) # check diagnostics
+plot(m_gam)
+
+# fit a GAM with an AR(1) term
+# not fixing the AR(1) coefficient causes issues with PSIS diagnostics
+get_mvgam_priors(formula = passengers ~ 0, # no error in observation process
+                 trend_formula = ~
+                   log(lag_12_passengers) +
+                   s(year, k = 5, bs = "tp") +
+                   s(month, k = 10, bs = "cc"),
+                 trend_model = AR(p = 1),
+                 data = data_train)
 
 m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
                   trend_formula = ~
+                    log(lag_12_passengers) +
                     s(year, k = 5, bs = "tp") +
                     s(month, k = 10, bs = "cc"),
                   trend_model = AR(p = 1), # AR(1) model
+                  priors = prior(normal(0.4, 0.01), class = ar1,
+                                 lb = 0.35, ub = 0.45),
                   noncentred = TRUE, # use a noncentered AR(1) model
                   knots = list(month = c(0.5, 12.5)),
                   family = poisson(link = "log"),
@@ -42,6 +76,16 @@ m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
                   samples = 500,
                   control = list(max_treedepth = 20, adapt_delta = 0.95),
                   parallel = TRUE, silent = 2)
+
+plot(m_gam_ar)
+summary(m_gam_ar) # check diagnostics
+
+# plot diagnostics (try without prior to see how bad it is without it)
+layout(matrix(c(1, 1:3), ncol = 2, byrow = TRUE))
+plot(m_gam_ar, type = "forecast")
+plot(loo(m_gam_ar), diagnostic = "k")
+plot(loo(m_gam_ar), diagnostic = "ESS") #' same as `diagnostic = "n_eff"`
+layout(1)
 
 #' Dynamic `mvgam` models contain draws for many quantities, all stored as MCMC
 #' draws in an object of class `stanfit` in the `model_output` slot:
@@ -77,14 +121,34 @@ plot(m_gam_ar, type = "trend") +
 # generate forectasts for additional new data
 # predicting later is useful if data are not available or too large to add
 data_test
-new_data <- tibble(time = max(data_train$time) + 1:(12 * (2027 - 1963)),
-                   dec_date = max(data_train$dec_date) + time/12,
-                   year = floor(dec_date),
-                   month = round((dec_date - year) * 12) + 1)
-new_data
-max(new_data$dec_date)
-plot_mvgam_fc(m_gam_ar, newdata = new_data)
-plot_mvgam_fc(m_gam_ar, newdata = new_data, realisations = TRUE)
+preds_2026 <- tibble(time = max(data_train$time) + 1:(12 * (2027 - 1963)),
+                     dec_date = max(data_train$dec_date) + time/12,
+                     year = floor(dec_date),
+                     month = round((dec_date - year) * 12) + 1) %>%
+  left_join(air_passengers %>% select(time, passengers, lag_12_passengers),
+            by = "time")
+
+#' need to predict with `for` loop since lag-12 values are not always avaiable
+#' not the best way to predict: it does not include uncertainty in lagged values
+for(i in which(is.na(preds_2026$passengers))) {
+  if(is.na(preds_2026$lag_12_passengers[i])) {
+    preds_2026$lag_12_passengers[i] <- preds_2026$passengers[i - 12]
+  }
+  
+  preds_2026$passengers[i] <-
+    predict(m_gam_ar, preds_2026[i, ], type = "expected")[, "Estimate"]
+}
+
+preds_2026 <- select(preds_2026, ! passengers) # to stop from calculating score
+
+# model predicts that passengers will exceed 8 million by the end of 1972
+preds_2026
+max(preds_2026$dec_date)
+plot_mvgam_fc(m_gam_ar, newdata = preds_2026, ylim = c(0, 8e6 / 1e3))
+abline(v = 200, lty = "dashed")
+plot_mvgam_fc(m_gam_ar, newdata = preds_2026, ylim = c(0, 8e6 / 1e3),
+              realisations = TRUE)
+filter(preds_2026, time == 200)
 
 #' `plot(forecast(m_gam_ar, newdata = new_data))` fails with error:
 #' `arguments imply differing number of rows: 792, 852`
@@ -136,7 +200,7 @@ predict(m_gam_ar, type = "response", process_error = TRUE) %>%
 # - response: values are > 0 (including decimals); scale is multiplicative
 # 
 # but note that:
-# - the mean can be any real number > 0
+# - the mean can be any real number > 0 (including decimals)
 # - the predicted response values can only be integers > 0
 
 #' link-scale partial effects are centered around 0
@@ -185,41 +249,62 @@ pp_check(m_gam_ar, type = "stat_2d", ndraws = 10, stat = c("median", "sd"))
 #' **break**
 
 # comparing models ----
-# moved intercept to observation process to improve fitting process
-m_bad <- mvgam(formula = passengers ~ 1,
-               trend_formula = ~ 0,
+layout(1:2)
+acf(air_passengers$passengers)
+pacf(air_passengers$passengers)
+layout(1)
+
+m_bad <- mvgam(formula = passengers ~ 0,
+               trend_formula = ~ 1,
                trend_model = AR(p = 1), # AR(1) model
                noncentred = TRUE, # use a noncentered AR(1) model
                knots = list(month = c(0.5, 12.5)),
                family = poisson(link = "log"),
                data = data_train, # calculate forecast while fitting
+               newdata = data_test,
                chains = 4,
                burnin = 750,
                samples = 500,
                parallel = TRUE,
                silent = 2)
 
-# both models predict decently well
-plot(hindcast(m_gam_ar))
-plot(hindcast(m_bad))
+plot(m_bad, type = "forecast")
+plot(loo(m_bad), diagnostic = "k")
+plot(loo(m_bad), diagnostic = "ESS") #' same as `diagnostic = "n_eff"`
 
-plot_predictions(m_gam_ar, by = "Time") # GAM model "understands" the trends
-plot_predictions(m_bad, by = "Time") # the AR model always assumes stationarity
+# both models predict decently well for past data
+plot(hindcast(m_gam_ar)) / plot(hindcast(m_bad))
 
-loo_compare(m_gam_ar, m_bad) # TODO: fix warning
-#' TODO: find data points with bad `k` and adjust the model accordingly
+# but they do not model the data the same way
+plot_predictions(m_gam_ar, by = "time") # GAM model "understands" the trends
+plot_predictions(m_bad, by = "time") # the AR model always assumes stationarity
+
+# the naive model forecasts quite badly (reverts to the long-term mean)
+plot_mvgam_fc(m_bad)
+plot_mvgam_fc(m_gam_ar)
+
+loo_compare(m_gam_ar, m_bad) #' `m_bad` is clearly much worse
+loo_compare(m_gam_ar, m_gam) #' `m_gam_ar` performs better: 12 / 1.6 = 7.5 SEs
 
 # predicting from new data (no terms to predict for the bad model)
 plot_predictions(m_gam_ar, condition = "month", points = 0.5)
 plot_predictions(m_gam_ar, condition = "year", points = 0.5)
 
 # rates of change: useful for link and expected scales, not for response scale
-newd_slopes <- tibble(time = 1:100, year = mean(data_train$year),
-                      month = seq(0, 12, length.out = length(time)))
+newd_slopes <- tibble(time = 1:100,
+                      year = mean(data_train$year),
+                      month = seq(0, 12, length.out = length(time)),
+                      lag_12_passengers = mean(data_train$lag_12_passengers))
 
-plot_slopes(m_gam_ar, variables = "month", by = "month", type = "link",
-            newdata = newd_slopes) +
-  geom_hline(yintercept = 0, linetype = "dashed")
+plot_grid(
+  draw(m_gam_ar$trend_mgcv_model, select = "s(month)",
+       data = tibble(lag_12_passengers = 0,
+                     month = seq(0, 12, length.out = 400),
+                     year = 0)),
+  plot_slopes(m_gam_ar, variables = "month", by = "month", type = "link",
+              newdata = newd_slopes) +
+    geom_hline(yintercept = 0, linetype = "dashed"),
+  ncol = 1)
 
 plot_slopes(m_gam_ar, variables = "month", by = "month", type = "expected",
             newdata = newd_slopes) +
@@ -281,10 +366,10 @@ plot(forecast(m_gam_ar))
 # the probabilities are conditional on the observed data and model parameters
 set.seed(20)
 d_probs <- tibble(y = seq(-4, 4, by = 0.01),
-       dens = dnorm(y),
-       log_dens = dnorm(y, log = TRUE),
-       sampled = sample(c(TRUE, FALSE), size = length(y), replace = TRUE,
-                        prob = c(0.005, 0.995)))
+                  dens = dnorm(y),
+                  log_dens = dnorm(y, log = TRUE),
+                  sampled = sample(c(TRUE, FALSE), size = length(y), replace = TRUE,
+                                   prob = c(0.005, 0.995)))
 
 d_obs <- filter(d_probs, sampled)
 
@@ -317,7 +402,7 @@ ggplot() +
 
 # Continuous Ranked Probability Score
 # "-1" forces a flip in the pdf, making the observation the MLE value
-if(FALSE) {
+if (FALSE) {
   if_else(est < y,
           integrate(f = (pnorm(est)    )^2, lower = -Inf, upper = Inf),
           integrate(f = (pnorm(est) - 1)^2, lower = -Inf, upper = Inf))
@@ -326,7 +411,7 @@ if(FALSE) {
 
 # Discrete Ranked Probability Score (CRPS for discrete random variables)
 # "-1" forces a flip in the pdf, making the observation the MLE value
-if(FALSE) {
+if (FALSE) {
   if_else(est < y,
           sum(f = (ppois(est)    )^2, lower = 0, upper = Inf),
           sum(f = (ppois(est) - 1)^2, lower = 0, upper = Inf))
