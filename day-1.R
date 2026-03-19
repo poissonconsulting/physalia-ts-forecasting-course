@@ -459,7 +459,6 @@ b2_prior_samples <- 0 + 2 * rt(n = length(b1_prior_samples), df = 3)
 #' prior for `(Intercept)` is for `temp` for `mean(doy)`, not when `doy = 0`
 #' thus the prior for `(Intercept)` is close to `mean(temp)`
 #' we will see why this is useful once we fit GAMs
-#' TODO: fit a GAM to show why this is useful
 mean(d_temp$temp)
 
 # priors are quite uninformative (wide)
@@ -506,12 +505,28 @@ ggplot() +
   #' *NOTE:* `(Intercept)` is for `temp` for mean `doy`, not `temp` when `doy = 0`
   geom_point(aes(doy - mean(doy), temp), d_temp)
 
-#' fitting a simple GLM
-#' TODO: add explanations of:
-#' - how priors are used for sampling
-#' - how likelihood is estimated
-#' - how chains and MCMC work
-#' - how posterior is calculated
+#' when fitting the model, `cmdstanr` uses Hamiltonian Monte Carlo (HMC),
+#' specifically the No-U-Turn Sampler (NUTS). The method simulates a marble
+#' rolling up and down surfaces:
+#' warmup phase:
+#' 1. sample a value from the prior distribution
+#' 2. take a small series of steps towards a new value, stopping if you start a
+#'    U-turn to avoid backtracking
+#' 3. calculate the likelihood for the starting point and the new candidate
+#' 4. accept the new candidate with probability based on a physics simulation
+#' 5. repeat steps 2-5 while optimizing the step length and `P(accpentance)`
+#' sampling phase:
+#' - repeat steps 2-5, but now store the values from each sample
+#' - since worse choices can still be chosen with some small probability,
+#'   the sampling process approximates the posterior distribution efficiently
+#' - preventing U-turns and optimizing `P(acceptance)` results in more efficient
+#'   sampling
+#' additionally:
+#' - the target acceptance probability is the `adapt_delta` parameter
+#' - the number of steps per sample is limited by the `max_tree_depth` parameter
+#' - numbers of samples are controlled by the `burnin` and `samples` arguments
+
+# fitting a simple GLM (fits in < 1 second)
 m_temp <- mvgam(temp ~ doy,
                 family = gaussian(),
                 data = d_temp, samples = 1000, burnin = 1000)
@@ -520,7 +535,14 @@ m_temp <- mvgam(temp ~ doy,
 # informative than the prior
 layout(matrix(1:4, ncol = 2, byrow = TRUE))
 hist(b1_prior_samples, main = "Prior for intercept")
-hist(b2_prior_samples, main = "Prior for intercept")
+hist(b2_prior_samples, main = "Prior for slope")
+hist(m_temp$model_output@sim$samples[[1]]$`b[1]`, main = "Est. intercept",
+     xlim = range(b1_prior_samples))
+hist(m_temp$model_output@sim$samples[[1]]$`b[2]`, main = "Est. slope",
+     xlim = range(b2_prior_samples))
+layout(1)
+
+layout(1:2)
 hist(m_temp$model_output@sim$samples[[1]]$`b[1]`, main = "Est. intercept")
 hist(m_temp$model_output@sim$samples[[1]]$`b[2]`, main = "Est. slope")
 layout(1)
@@ -529,13 +551,92 @@ ggplot() +
   geom_abline(intercept = m_temp$model_output@sim$samples[[1]]$`b[1]`,
               slope = m_temp$model_output@sim$samples[[1]]$`b[2]`,
               color = 'red3', alpha = 0.1) +
-  #' *NOTE:* `(Intercept)` is for `temp` for mean `doy`, not `temp` when `doy = 0`
+  #' *NOTE:* `(Intercept)` is now `temp` when `doy = 0` because no smooth terms
   geom_point(aes(doy, temp), d_temp)
+
+summary(m_temp)
+
+# modeling nonlinear trends ----
+#' fitting a GLM with a polynomial term
+#' The terms can't be functions of each other, so we need to add columns of the
+#' polynomial that are independent of each other (i.e., orthogonal) to avoid
+#' complete collinearity and non-identifiability issues when fitting.
+d_temp <- d_temp %>%
+  bind_cols(.,
+            poly(.$doy, degree = 3) %>%
+              as.data.frame() %>%
+              rename(doy_1 = 1, doy_2 = 2, doy_3 = 3))
+
+#' `mu = b[1] + b[2] * doy + b[3] * doy^2 + b[4] * doy^3`
+m_temp_poly_prior <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
+                           family = gaussian(),
+                           data = d_temp, prior_simulation = TRUE,
+                           samples = 2000, silent = 2)
+
+#' prior for `(Intercept)` is for `temp` for `mean(doy)`, not when `doy = 0`
+m_temp_poly_prior$model_output@sim$samples[[1]] %>%
+  select(matches("b\\[[1-4]\\]")) %>% # select coefficients only
+  pivot_longer(everything(), values_to = "sample", names_to = "coef") %>%
+  ggplot() +
+  facet_wrap(~ coef, scales = "free") +
+  geom_histogram(aes(sample), fill = "grey", color = "black", bins = 100) +
+  labs(x = "Prior", y = "Count")
+
+# prior predictive samples for the polynomial model
+m_temp_poly_prior$model_output@sim$samples[[1]] %>%
+  select(matches("b\\[[1-4]\\]")) %>%
+  as_tibble() %>%
+  mutate(preds = map(1:n(), function(i) {
+    mutate(d_temp,
+           sample_id = i,
+           y = `b[1]`[i] + `b[2]`[i] * doy_1 + `b[3]`[i] * doy_2 +
+             `b[4]`[i] * doy_3)
+  })) %>%
+  unnest(preds) %>%
+  ggplot() +
+  geom_line(aes(x = doy - mean(doy), y = y, group = sample_id),
+            color = 'red3', alpha = 0.1) +
+  geom_point(aes(doy - mean(doy), temp), d_temp)
+
+# prior sample curves are too flat because x covariates have been rescaled to
+# be quite close to 0:
+range(d_temp$doy_1); range(d_temp$doy_2); range(d_temp$doy_3)
+
+# the model still fits quickly because it's relatively simple
+# but more complex models may need more careful choices of samples
+m_temp_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
+                     family = gaussian(),
+                     data = d_temp, samples = 1000, burnin = 1000)
+
+#' since `{mvgam}` fits Bayesian models with `Stan`, we should check that all
+#' chains converged properly: check `Rhat`, `n_eff`, and Stan MCMC diagnostics
+#' each chain is one of the "paths" the model took to estimate the parameters
+#' the model will spend more time near the better parameter estimates and less
+#' near unlikely values, which estimates the posterior distribution.
+#' ideally, all chains should be similar and undistiguishable.
+summary(m_temp_poly)
+mcmc_plot(m_temp_poly, type = 'trace', variable = rownames(coef(m_temp_poly)))
+plot(m_temp_poly, type = 'residuals') #' can also use `plot_mvgam_resids()`
+
+# can add predictions to the data...
+d_temp %>%
+  bind_cols(predict(m_temp_poly, type = 'response') %>%
+              as.data.frame() %>%
+              rename(est_poly = Estimate,
+                     se_poly = Est.Error,
+                     q2.5_poly = Q2.5,
+                     q97.5_poly = Q97.5))
+
+# ... but there are also many useful built-in functions
+plot(hindcast(m_temp_poly, type = 'response')) # uncertainty in Y
+plot(hindcast(m_temp_poly, type = 'link')) # uncertainty in mu on link scale
+plot(hindcast(m_temp_poly, type = 'expected')) # uncertainty in mu
+#' *NOTE:* link and response scale are the same for identity link functions
+plot(m_temp_poly, type = 'smooths') # only works with GAMs (see below)
 
 # how can we model data that have irregular sampling over time? ----
 # with irregular sampling, it may help to focus on rates of change and trends
 # over time rather than changes over steps in discrete time
-
 #' *NOTE:* many of the `{mvgam}` plots assume discrete-time sampling, so the
 #' missing observations should be `NA` rather than missing the full row, as
 #' long as none of the predictors have `NA` values.
@@ -551,56 +652,16 @@ ggplot(d_temp_missing, aes(date, temp)) +
   geom_point(alpha = 0.75) +
   labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
 
-# TODO: repeat prior predictive check to see how unruly the predictions are
-#' fitting a GLM with a polynomial term
-#' The terms can't be functions of each other, so we need to add columns of the
-#' polynomial that are independent of each other (i.e., orthogonal) to avoid
-#' complete collinearity and non-identifiability issues when fitting.
-d_temp_missing <- d_temp_missing %>%
-  bind_cols(.,
-            poly(.$doy, degree = 3) %>%
-              as.data.frame() %>%
-              rename(doy_1 = 1, doy_2 = 2, doy_3 = 3))
-
-m_temp_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
-                     family = gaussian(), #' *NOTE:* default family is Poisson
-                     data = d_temp_missing, samples = 1000, burnin = 1000)
-
-#' since `{mvgam}` fits Bayesian models with `Stan`, we should check that all
-#' chains converged properly: check `Rhat`, `n_eff`, and Stan MCMC diagnostics
-#' each chain is one of the "paths" the model took to estimate the parameters
-#' the model will spend more time near the better parameter estimates and less
-#' near unlikely values, which estimates the posterior distribution.
-#' ideally, all chains should be similar and undistiguishable.
-summary(m_temp_poly)
-mcmc_plot(m_temp_poly, type = 'trace', variable = rownames(coef(m_temp_poly)))
-plot(m_temp_poly, type = 'residuals') #' can also use `plot_mvgam_resids()`
-
-# can add predictions to the data...
-d_temp_missing %>%
-  bind_cols(predict(m_temp_poly, type = 'response') %>%
-              as.data.frame() %>%
-              rename(est_poly = Estimate,
-                     se_poly = Est.Error,
-                     q2.5_poly = Q2.5,
-                     q97.5_poly = Q97.5))
-
-# ... but there are also many useful built-in functions
-plot(hindcast(m_temp_poly, type = 'response')) # uncertainty in Y
-plot(hindcast(m_temp_poly, type = 'link')) # uncertainty in mu on link scale
-plot(hindcast(m_temp_poly, type = 'expected')) # uncertainty in mu
-plot(m_temp_poly, type = 'smooths') # only works with GAMs (see below)
-
-#' fitting a *GAM* with a smooth term
+#' fitting a *GAM* with a smooth term of `doy`
 #' the smooth term is created using the `s()` function
 #' greater model complexity requires a bit more sampling and burnin
 m_temp_gam <- mvgam(temp ~ s(doy, k = 10, bs = 'cr'),
                     family = gaussian(), data = d_temp_missing,
-                    parallel = TRUE, burnin = 1e3, samples = 750,
-                    #' increase `adapt_delta` to improve sampling:
+                    parallel = TRUE, burnin = 1e3, samples = 1e3,
+                    #' tune parameters to improve sampling:
                     #' - `max_treedepth`: max n of binary choices when sampling
                     #' - `adapt_delta`: target average proposal acceptance prob. 
-                    control = list(max_treedepth = 10, adapt_delta = 0.9))
+                    control = list(max_treedepth = 20, adapt_delta = 0.95))
 
 #' `summary()` looks a bit different from the one for the GLM:
 #' - `s(doy)` has `k - 1` coefficients
@@ -608,12 +669,10 @@ m_temp_gam <- mvgam(temp ~ s(doy, k = 10, bs = 'cr'),
 summary(m_temp_gam)
 coef(m_temp_gam$mgcv_model) # model coefficients
 coef(m_temp_gam$mgcv_model)[-1] #' check `s(doy)` terms only
-mcmc_plot(m_temp_gam, type = 'trace',
-          variable = c('sigma_obs[1]', 's(doy)_rho', 's(doy)._rho'),
-          regex = TRUE)
+mcmc_plot(m_temp_gam, type = 'trace', variable = 'doy', regex = TRUE)
 
 #' `mcmc_plot()` only plots intercept and rho terms by default
-mcmc_plot(m_temp_gam, type = 'trace', variable = c('.'), regex = TRUE)
+mcmc_plot(m_temp_gam, type = 'trace', variable = '.', regex = TRUE)
 
 #' visualize the cubic basis
 draw(basis(s(doy, bs = 'cr'), data = d_temp_missing)) # default cubic basis
@@ -632,6 +691,7 @@ plot(hindcast(m_temp_gam, type = 'link')) # uncertainty in mu on link scale
 plot(hindcast(m_temp_gam, type = 'expected')) # identity link: same as above
 
 #' smooths are centered at 0
+#' this is why the prior for the intercepts is for the average covariate values!
 plot(m_temp_gam, type = 'smooths') #' model terms; == `plot_mvgam_smooth()`
 
 plot(m_temp_gam, type = 'residuals') #' model diagnostics; `plot_mvgam_resids()`
