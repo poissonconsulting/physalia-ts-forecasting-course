@@ -1,15 +1,15 @@
-source('packages.R') # attach necessary packages
+source("packages.R") # attach necessary packages
 
 # Introduction to time series and time series visualization ----
 # a simple time series: daily temperature values
-data('airquality')
+data("airquality")
 ?airquality
 head(airquality) #' *NOTE:* temperature is in Fahrenheit degrees
 
 # clean up the data format
 d_temp <- airquality %>%
   rename_with(stringr::str_to_snake, everything()) %>% # convert to snake_case
-  mutate(date = as_date(paste0('1973-', month, '-', day)),
+  mutate(date = as_date(paste0("1973-", month, "-", day)),
          doy = yday(date),
          week_re = factor(week(date)),
          time = order(date)) %>% #' required for `trend_model` in `mvgam()`
@@ -21,19 +21,19 @@ d_temp
 p_temp <-
   ggplot(d_temp, aes(date, temp)) +
   geom_point(alpha = 0.75) +
-  labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
+  labs(x = NULL, y = expression(bold(paste("Temperature (\U00B0", "C)"))))
 p_temp
 
 # plot the data with a smooth model
-p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
+p_temp + geom_smooth(color = "darkorange", fill = "darkorange", method = "gam",
                      formula = y ~ s(x, k = 5))
 
 # plot the data with a wiggly model
-p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
+p_temp + geom_smooth(color = "darkorange", fill = "darkorange", method = "gam",
                      formula = y ~ s(x, k = 50), n = 400)
 
 # plot the data with an extremely wiggly model
-p_temp + geom_smooth(color = 'darkorange', fill = 'darkorange', method = 'gam',
+p_temp + geom_smooth(color = "darkorange", fill = "darkorange", method = "gam",
                      formula = y ~ s(x, k = nrow(d_temp) - 1), n = 400,
                      method.args = list(gamma = 0.00001))
 
@@ -119,7 +119,7 @@ for(i in 2:nrow(d_ts)) {
 
 #' *white noise*: `y_t` is IID Gaussian: `w_t`
 ggplot(d_ts, aes(t, w)) +
-  geom_hline(yintercept = 0, lty = 'dashed') +
+  geom_hline(yintercept = 0, lty = "dashed") +
   geom_line()
 
 layout(1:2)
@@ -129,7 +129,7 @@ arima(d_ts$w, order = c(0, 0, 0)) %>% coef()
 
 #' *AR(1) process*: `y_t` is a function of of `y_{t-i}` and `w_t`
 ggplot(d_ts, aes(t, ar_1)) +
-  geom_hline(yintercept = 0, lty = 'dashed') +
+  geom_hline(yintercept = 0, lty = "dashed") +
   geom_line()
 
 acf(d_ts$ar_1, ci = 0.99); pacf(d_ts$ar_1, ci = 0.99)
@@ -139,7 +139,7 @@ acf(resid(m_ar)); pacf(resid(m_ar)) # residuals don't have appreciable signals
 
 #' *MA(1) process*: errors of `y_t` are a function of `w_t` and `w_{t-1}`
 ggplot(d_ts, aes(t, ma_1)) +
-  geom_hline(yintercept = 0, lty = 'dashed') +
+  geom_hline(yintercept = 0, lty = "dashed") +
   geom_line()
 
 acf(d_ts$ma_1, ci = 0.99); pacf(d_ts$ma_1, ci = 0.99)
@@ -149,7 +149,7 @@ acf(resid(m_ma)); pacf(resid(m_ma)) # residuals don't have appreciable signals
 
 #' *ARMA(1, 1) process*: `AR(1) + MA(1)`
 ggplot(d_ts, aes(t, arma_11)) +
-  geom_hline(yintercept = 0, lty = 'dashed') +
+  geom_hline(yintercept = 0, lty = "dashed") +
   geom_line()
 
 acf(d_ts$arma_11, ci = 0.99); pacf(d_ts$arma_11, ci = 0.99) # AR + MA plots
@@ -163,10 +163,10 @@ layout(1)
 n_preds <- 100
 
 preds <-
-  tibble(model_type = c('AR(1)', 'MA(1)', 'ARMA(1, 1)', 'White noise'),
-         model = list(m_ar, m_ma, m_arma, 'White noise'),
+  tibble(model_type = c("AR(1)", "MA(1)", "ARMA(1, 1)", "White noise"),
+         model = list(m_ar, m_ma, m_arma, "White noise"),
          predictions = map(model, function(.m) {
-           if(class(.m) == 'character') {
+           if(class(.m) == "character") {
              tibble(t = max(d_ts$t) + 1:n_preds,
                     pred = mean(d_ts$w),
                     se = sd(d_ts$w)) %>%
@@ -185,20 +185,20 @@ preds <-
 
 d_ts %>%
   filter(t > 900) %>%
-  pivot_longer(! t, names_to = 'model_type') %>%
-  mutate(model_type = case_when(model_type == 'ar_1' ~ 'AR(1)',
-                                model_type == 'ma_1' ~ 'MA(1)',
-                                model_type == 'arma_11' ~ 'ARMA(1, 1)',
-                                model_type == 'w' ~ 'White noise')) %>%
+  pivot_longer(! t, names_to = "model_type") %>%
+  mutate(model_type = case_when(model_type == "ar_1" ~ "AR(1)",
+                                model_type == "ma_1" ~ "MA(1)",
+                                model_type == "arma_11" ~ "ARMA(1, 1)",
+                                model_type == "w" ~ "White noise")) %>%
   mutate(int = mean(value), .by = model_type) %>%
   ggplot() +
   facet_wrap(~ model_type) +
-  geom_hline(aes(yintercept = int), lty = 'dashed') +
+  geom_hline(aes(yintercept = int), lty = "dashed") +
   geom_point(aes(t, value), alpha = 0.5) +
   geom_ribbon(aes(t, ymin = lwr_90, ymax = upr_90), preds, alpha = 0.3,
-              lwd = 0.5, , fill = 'darkorange', color = 'darkorange') +
-  geom_line(aes(t, pred), preds, color = 'darkorange', lwd = 1) +
-  labs(x = 'Timepoint', y = 'Value')
+              lwd = 0.5, , fill = "darkorange", color = "darkorange") +
+  geom_line(aes(t, pred), preds, color = "darkorange", lwd = 1) +
+  labs(x = "Timepoint", y = "Value")
 
 #' see `?AirPassengers` for an example model that includes seasonal trends
 
@@ -221,21 +221,21 @@ plot_process <- function(ar = c(0), ma = c(0), n = 1e3, return_values = FALSE) {
                   na.rm = TRUE)
   }
   
-  main_lab <- case_when(all(ar == 0, ma == 0) ~ 'White noise',
-                        all(ar != 0 & ma == 0) ~ 'AR process',
-                        all(ar == 0 & ma != 0) ~ 'MA process',
-                        all(ar != 0 & ma != 0) ~ 'ARMA process',
-                        .default = 'Odd parameter input!')
+  main_lab <- case_when(all(ar == 0, ma == 0) ~ "White noise",
+                        all(ar != 0 & ma == 0) ~ "AR process",
+                        all(ar == 0 & ma != 0) ~ "MA process",
+                        all(ar != 0 & ma != 0) ~ "ARMA process",
+                        .default = "Odd parameter input!")
   
   if(round(sum(ar, na.rm = TRUE), 10) >= 1) { # to rm floating point error
-    main_lab <- paste(main_lab, '(non-stationary)')
+    main_lab <- paste(main_lab, "(non-stationary)")
   }
   
   layout(matrix(c(1, 1, 2, 3), ncol = 2, byrow = TRUE))
-  plot(out, type = 'l', ylab = 'Value',
+  plot(out, type = "l", ylab = "Value",
        main = main_lab)
-  acf(out, main = '')
-  pacf(out, main = '')
+  acf(out, main = "")
+  pacf(out, main = "")
   layout(1)
   if(return_values) return(out)
 }
@@ -288,8 +288,8 @@ d_thin <-
          data = map(thinning, \(.t) d_ts %>% filter(1:n() %% .t == 0) %>%
                       rename(y = ar_1)),
          model = map(data, \(.d) arima(.d$y, c(1, 0, 0))),
-         intercept = map_dbl(model, \(.m) coef(.m)['intercept']),
-         ar_1 = map_dbl(model, \(.m) coef(.m)['ar1']))
+         intercept = map_dbl(model, \(.m) coef(.m)["intercept"]),
+         ar_1 = map_dbl(model, \(.m) coef(.m)["ar1"]))
 
 d_thin %>%
   unnest(data) %>%
@@ -301,13 +301,13 @@ d_thin %>%
   select(thinning, ar_1, intercept) %>%
   pivot_longer(c(ar_1, intercept)) %>%
   ggplot(aes(thinning, value)) +
-  facet_wrap(~ name, scales = 'free_y', ncol = 1) +
+  facet_wrap(~ name, scales = "free_y", ncol = 1) +
   geom_point()
 
 # data thinning is particularly problematic with animal movement data ----
 #' simulate a movement path from a continuous-time stochastic process
-mm <- ctmm(tau = c(180, 5) %#% 'minutes', sigma = 10000, mu = c(0, 0))
-track <- simulate(mm, nsim = 1, seed = 160, t = 1:1e3 %#% 'minutes')
+mm <- ctmm(tau = c(180, 5) %#% "minutes", sigma = 10000, mu = c(0, 0))
+track <- simulate(mm, nsim = 1, seed = 160, t = 1:1e3 %#% "minutes")
 plot(track)
 
 # calculate speed using a discrete-time approach: straight-line displacement
@@ -317,7 +317,7 @@ data.frame(track) %>%
          speed = displacement / time_interval) %>%
   ggplot(aes(t, speed)) +
   geom_line() +
-  ylab('SLD divided by time interval (m/s)')
+  ylab("SLD divided by time interval (m/s)")
 
 # calculate SLD for thinned time series
 d_track <- tibble(thinning = 1:60,
@@ -339,18 +339,18 @@ d_track
 d_track %>%
   unnest(data) %>%
   filter(sampling_interval <= 540) %>%
-  mutate(sampling_interval = paste(sampling_interval, 'seconds') %>%
+  mutate(sampling_interval = paste(sampling_interval, "seconds") %>%
            factor(., unique(.))) %>%
   ggplot(aes(t, speed)) +
   facet_wrap(~ sampling_interval) +
   geom_line() +
-  ylab('SLD divided by time interval (m/s)')
+  ylab("SLD divided by time interval (m/s)")
 
 # estimated speed decreases substantially with sampling interval...
 ggplot(d_track, aes(sampling_interval, mean_speed)) +
   geom_line() +
-  labs(x = 'Sampling interval (seconds)',
-       y = 'Straight-line displacement divided by time interval (m/s)')
+  labs(x = "Sampling interval (seconds)",
+       y = "Straight-line displacement divided by time interval (m/s)")
 
 # ... which is not surprising since we are losing data on the complexity of the
 # tracks as we thin them. the issues compound if sampling intervals are
@@ -362,7 +362,7 @@ d_track %>%
   filter(thinning %in% c(1, 5, 10, 15, 30, 60)) %>%
   mutate(sampling_interval =
            paste(sampling_interval / 60,
-                 if_else(sampling_interval == 60, 'minute', 'minutes')) %>%
+                 if_else(sampling_interval == 60, "minute", "minutes")) %>%
            factor(., levels = unique(.))) %>%
   unnest(data) %>%
   ggplot(aes(x, y)) +
@@ -371,8 +371,8 @@ d_track %>%
   geom_path(aes(x, y), d_track$data[[1]], alpha = 0.3) +
   geom_path() +
   geom_point() +
-  scale_x_continuous(name = 'x (meters)', breaks = (-3:3) * 100) +
-  ylab('y (meters)')
+  scale_x_continuous(name = "x (meters)", breaks = (-3:3) * 100) +
+  ylab("y (meters)")
 
 #' **break**
 
@@ -431,7 +431,7 @@ d_track %>%
 # fitting models with `{mvgam}` ----
 ggplot(d_temp, aes(date, temp)) +
   geom_point(alpha = 0.75) +
-  labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
+  labs(x = NULL, y = expression(bold(paste("Temperature (\U00B0", "C)"))))
 
 #' how models are fit in `{mvgam}`: a quick intro to Bayesian modeling
 #' - Bayesians view knowledge as a constantly updating set of information
@@ -476,7 +476,7 @@ plot_grid(
 ggplot() +
   geom_abline(intercept = b1_prior_samples[1:1000],
               slope = b2_prior_samples[1:1000],
-              color = 'red3', alpha = 0.1) +
+              color = "red3", alpha = 0.1) +
   geom_point(aes(doy - mean(doy), temp), d_temp)
 
 #' can also simulate priors using `{mvgam}`
@@ -501,7 +501,7 @@ plot_grid(
 ggplot() +
   geom_abline(intercept = m_temp_prior$model_output@sim$samples[[1]]$`b[1]`,
               slope = m_temp_prior$model_output@sim$samples[[1]]$`b[2]`,
-              color = 'red3', alpha = 0.1) +
+              color = "red3", alpha = 0.1) +
   #' *NOTE:* `(Intercept)` is for `temp` for mean `doy`, not `temp` when `doy = 0`
   geom_point(aes(doy - mean(doy), temp), d_temp)
 
@@ -550,7 +550,7 @@ layout(1)
 ggplot() +
   geom_abline(intercept = m_temp$model_output@sim$samples[[1]]$`b[1]`,
               slope = m_temp$model_output@sim$samples[[1]]$`b[2]`,
-              color = 'red3', alpha = 0.1) +
+              color = "red3", alpha = 0.1) +
   #' *NOTE:* `(Intercept)` is now `temp` when `doy = 0` because no smooth terms
   geom_point(aes(doy, temp), d_temp)
 
@@ -595,7 +595,7 @@ m_temp_poly_prior$model_output@sim$samples[[1]] %>%
   unnest(preds) %>%
   ggplot() +
   geom_line(aes(x = doy - mean(doy), y = y, group = sample_id),
-            color = 'red3', alpha = 0.1) +
+            color = "red3", alpha = 0.1) +
   geom_point(aes(doy - mean(doy), temp), d_temp)
 
 # prior sample curves are too flat because x covariates have been rescaled to
@@ -615,12 +615,12 @@ m_temp_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
 #' near unlikely values, which estimates the posterior distribution.
 #' ideally, all chains should be similar and undistiguishable.
 summary(m_temp_poly)
-mcmc_plot(m_temp_poly, type = 'trace', variable = rownames(coef(m_temp_poly)))
-plot(m_temp_poly, type = 'residuals') #' can also use `plot_mvgam_resids()`
+mcmc_plot(m_temp_poly, type = "trace", variable = rownames(coef(m_temp_poly)))
+plot(m_temp_poly, type = "residuals") #' can also use `plot_mvgam_resids()`
 
 # can add predictions to the data...
 d_temp %>%
-  bind_cols(predict(m_temp_poly, type = 'response') %>%
+  bind_cols(predict(m_temp_poly, type = "response") %>%
               as.data.frame() %>%
               rename(est_poly = Estimate,
                      se_poly = Est.Error,
@@ -628,11 +628,11 @@ d_temp %>%
                      q97.5_poly = Q97.5))
 
 # ... but there are also many useful built-in functions
-plot(hindcast(m_temp_poly, type = 'response')) # uncertainty in Y
-plot(hindcast(m_temp_poly, type = 'link')) # uncertainty in mu on link scale
-plot(hindcast(m_temp_poly, type = 'expected')) # uncertainty in mu
+plot(hindcast(m_temp_poly, type = "response")) # uncertainty in Y
+plot(hindcast(m_temp_poly, type = "link")) # uncertainty in mu on link scale
+plot(hindcast(m_temp_poly, type = "expected")) # uncertainty in mu
 #' *NOTE:* link and response scale are the same for identity link functions
-plot(m_temp_poly, type = 'smooths') # only works with GAMs (see below)
+plot(m_temp_poly, type = "smooths") # only works with GAMs (see below)
 
 # how can we model data that have irregular sampling over time? ----
 # with irregular sampling, it may help to focus on rates of change and trends
@@ -650,12 +650,12 @@ d_temp_missing #' note the `NA`s in the `temp` column
 
 ggplot(d_temp_missing, aes(date, temp)) +
   geom_point(alpha = 0.75) +
-  labs(x = NULL, y = expression(bold(paste('Temperature (\U00B0', 'C)'))))
+  labs(x = NULL, y = expression(bold(paste("Temperature (\U00B0", "C)"))))
 
 #' fitting a *GAM* with a smooth term of `doy`
 #' the smooth term is created using the `s()` function
 #' greater model complexity requires a bit more sampling and burnin
-m_temp_gam <- mvgam(temp ~ s(doy, k = 10, bs = 'cr'),
+m_temp_gam <- mvgam(temp ~ s(doy, k = 10, bs = "cr"),
                     family = gaussian(), data = d_temp_missing,
                     parallel = TRUE, burnin = 1e3, samples = 1e3,
                     #' tune parameters to improve sampling:
@@ -669,16 +669,16 @@ m_temp_gam <- mvgam(temp ~ s(doy, k = 10, bs = 'cr'),
 summary(m_temp_gam)
 coef(m_temp_gam$mgcv_model) # model coefficients
 coef(m_temp_gam$mgcv_model)[-1] #' check `s(doy)` terms only
-mcmc_plot(m_temp_gam, type = 'trace', variable = 'doy', regex = TRUE)
+mcmc_plot(m_temp_gam, type = "trace", variable = "doy", regex = TRUE)
 
 #' `mcmc_plot()` only plots intercept and rho terms by default
-mcmc_plot(m_temp_gam, type = 'trace', variable = '.', regex = TRUE)
+mcmc_plot(m_temp_gam, type = "trace", variable = ".", regex = TRUE)
 
 #' visualize the cubic basis
-draw(basis(s(doy, bs = 'cr'), data = d_temp_missing)) # default cubic basis
-draw(basis(s(doy, bs = 'cr'), data = d_temp_missing, coefficients = 1:9,
+draw(basis(s(doy, bs = "cr"), data = d_temp_missing)) # default cubic basis
+draw(basis(s(doy, bs = "cr"), data = d_temp_missing, coefficients = 1:9,
            constraints = TRUE))
-draw(basis(s(doy, bs = 'cr'), data = d_temp_missing, # default basis * coefs
+draw(basis(s(doy, bs = "cr"), data = d_temp_missing, # default basis * coefs
            coefficients = coef(m_temp_gam$mgcv_model)[-1], 
            constraints = TRUE))
 draw(basis(m_temp_gam$mgcv_model)) & # fitted cubic basis
@@ -686,15 +686,15 @@ draw(basis(m_temp_gam$mgcv_model)) & # fitted cubic basis
             fitted_values(m_temp_gam$mgcv_model), lwd = 1,
             inherit.aes = FALSE)
 
-plot(hindcast(m_temp_gam, type = 'response')) # uncertainty in Y
-plot(hindcast(m_temp_gam, type = 'link')) # uncertainty in mu on link scale
-plot(hindcast(m_temp_gam, type = 'expected')) # identity link: same as above
+plot(hindcast(m_temp_gam, type = "response")) # uncertainty in Y
+plot(hindcast(m_temp_gam, type = "link")) # uncertainty in mu on link scale
+plot(hindcast(m_temp_gam, type = "expected")) # identity link: same as above
 
 #' smooths are centered at 0
 #' this is why the prior for the intercepts is for the average covariate values!
-plot(m_temp_gam, type = 'smooths') #' model terms; == `plot_mvgam_smooth()`
+plot(m_temp_gam, type = "smooths") #' model terms; == `plot_mvgam_smooth()`
 
-plot(m_temp_gam, type = 'residuals') #' model diagnostics; `plot_mvgam_resids()`
+plot(m_temp_gam, type = "residuals") #' model diagnostics; `plot_mvgam_resids()`
 
 #' **break**
 
@@ -702,12 +702,12 @@ plot(m_temp_gam, type = 'residuals') #' model diagnostics; `plot_mvgam_resids()`
 # fit a GAM with a random effect of week
 ggplot(d_temp_missing) + geom_point(aes(week_re, temp), alpha = 0.3)
 
-m_temp_re <- mvgam(temp ~ s(week_re, bs = 're'), family = gaussian(),
+m_temp_re <- mvgam(temp ~ s(week_re, bs = "re"), family = gaussian(),
                    data = d_temp_missing, parallel = TRUE, silent = 2)
 summary(m_temp_re)
 draw(m_temp_re$mgcv_model) # each week has a coefficient
 
-plot(hindcast(m_temp_re, type = 'response')) # response scale; uncertainty in Y
+plot(hindcast(m_temp_re, type = "response")) # response scale; uncertainty in Y
 
 #' *Q:* how do we choose the window width? is 2 weeks or 10 days better than 7?
 
@@ -715,7 +715,7 @@ plot(hindcast(m_temp_re, type = 'response')) # response scale; uncertainty in Y
 #' discrete-time random effects. The random effects in the GAMs are the basis
 #' coefficients
 plot_grid(
-  draw(basis(s(doy, bs = 'cr'), data = d_temp_missing)), # default cubic basis
+  draw(basis(s(doy, bs = "cr"), data = d_temp_missing)), # default cubic basis
   draw(basis(m_temp_gam$mgcv_model), residuals = TRUE) + # fitted cubic basis
     geom_line(aes(doy, .fitted - coef(m_temp_gam$mgcv_model)[1]),
               fitted_values(m_temp_gam$mgcv_model), lwd = 1,
@@ -725,26 +725,26 @@ plot_grid(
 #' smooth terms are better at dealing with gaps and irregular sampling. they
 #' also don't require choosing a window size, but you do need to choose `k`.
 ggplot() +
-  geom_line(aes(doy, Estimate, color = 's(doy)'),
+  geom_line(aes(doy, Estimate, color = "s(doy)"),
             bind_cols(d_temp, predict(m_temp_gam, d_temp)),
             lwd = 1, inherit.aes = FALSE) +
-  geom_line(aes(doy, Estimate, color = 's(week, bs = \'re\')'),
+  geom_line(aes(doy, Estimate, color = "s(week, bs = \"re\")"),
             bind_cols(d_temp, predict(m_temp_re, d_temp)),
             lwd = 1, inherit.aes = FALSE) +
   geom_point(aes(doy, temp), d_temp_missing, alpha = 0.3, inherit.aes = FALSE) +
-  scale_color_highcontrast(name = 'Model') +
-  theme(legend.position = 'top')
+  scale_color_highcontrast(name = "Model") +
+  theme(legend.position = "top")
 
 #' add an `AR(1)` component
 m_temp_ar <- mvgam(formula = temp ~ 0,
-                   trend_formula = ~ s(doy, k = 10, bs = 'cr'),
+                   trend_formula = ~ s(doy, k = 10, bs = "cr"),
                    trend_model = AR(1),
                    family = gaussian(), data = d_temp_missing, noncentred = TRUE,
                    parallel = TRUE, burnin = 500, samples = 1000,
                    control = list(max_treedepth = 20, adapt_delta = 0.99))
 
 # chains are occasionally not well-mixed even if Rhat is near 1
-mcmc_plot(m_temp_ar, type = 'trace')
+mcmc_plot(m_temp_ar, type = "trace")
 summary(m_temp_ar)
 plot(m_temp_ar) # no appreciable correlations at any lags
 # uncertainty at greater lags is because of missing data

@@ -1,5 +1,5 @@
-source('packages.R') # attach necessary packages
-source('gaussian-process-functions.R') # for plotting GP covariance function
+source("packages.R") # attach necessary packages
+source("gaussian-process-functions.R") # for plotting GP covariance function
 
 #' *Stete space mdoels*:
 #' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
@@ -14,7 +14,7 @@ source('gaussian-process-functions.R') # for plotting GP covariance function
 #' uncertainty needs to be propagated accordingly across each step
 
 # example with count data: global number of international air passengers ----
-data('AirPassengers')
+data("AirPassengers")
 
 AirPassengers
 class(AirPassengers)
@@ -30,31 +30,31 @@ air_passengers
 # visualize time as a single line
 ggplot(air_passengers, aes(dec_date, passengers)) +
   geom_line() +
-  labs(x = 'Year CE', y = 'International airline passengers (thousands)')
+  labs(x = "Year CE", y = "International airline passengers (thousands)")
 
 # visualize time as a repeating cycle
 ggplot(air_passengers, aes(month, passengers, group = year, color = year)) +
   facet_wrap(~ year) +
   geom_line() +
-  scale_x_continuous('Month', expand = c(0, 0)) +
-  scale_y_continuous('International airline passengers (thousands)')
+  scale_x_continuous("Month", expand = c(0, 0)) +
+  scale_y_continuous("International airline passengers (thousands)")
 
 # visualize time as a surface
 ggplot(air_passengers, aes(year, month, fill = passengers)) +
   geom_raster() +
-  scale_x_continuous('Year CE', expand = c(0, 0)) +
-  scale_y_continuous('Month', expand = c(0, 0), breaks = 1:12,
+  scale_x_continuous("Year CE", expand = c(0, 0)) +
+  scale_y_continuous("Month", expand = c(0, 0), breaks = 1:12,
                      labels = month.name) +
-  scale_fill_bam(name = 'International airline passengers (thousands)') +
-  theme(legend.position = 'top')
+  scale_fill_bam(name = "International airline passengers (thousands)") +
+  theme(legend.position = "top")
 
 # modeling ----
 # split data into training and testing sets
 ggplot(air_passengers, aes(dec_date, passengers, lty = year < 1958)) +
   geom_line() +
-  geom_vline(xintercept = 1958, lty = 'dashed') +
-  labs(x = 'Year CE', y = 'International airline passengers (thousands)') +
-  scale_linetype_manual('Dataset', values = c(3, 1), labels = c('Test', 'Train'))
+  geom_vline(xintercept = 1958, lty = "dashed") +
+  labs(x = "Year CE", y = "International airline passengers (thousands)") +
+  scale_linetype_manual("Dataset", values = c(3, 1), labels = c("Test", "Train"))
 
 data_train <- filter(air_passengers, year <= 1958)
 data_test <- filter(air_passengers, year > 1958)
@@ -72,14 +72,14 @@ m_gam <- mvgam(formula = passengers ~ s(dec_date, k = 30),
                parallel = TRUE)
 
 # diagnostics look ok
-mcmc_plot(m_gam, type = 'trace', variable = '.', regex = TRUE)
+mcmc_plot(m_gam, type = "trace", variable = ".", regex = TRUE)
 summary(m_gam)
 
 # predictions for the test dataset are quite good
 plot(hindcast(m_gam))
 
 # predictions for the test dataset are quite poor
-plot(m_gam, type = 'forecast')
+plot(m_gam, type = "forecast")
 
 # basis information only extends to the range of the data, so predictions past
 # the last time only continue the trend at the last timestamp
@@ -98,7 +98,7 @@ m_gam_smooth <- mvgam(formula = passengers ~ s(dec_date, k = 10),
 
 # predictions are better, but the model is missing the seasonality
 plot(hindcast(m_gam_smooth))
-plot(m_gam_smooth, type = 'forecast')
+plot(m_gam_smooth, type = "forecast")
 draw(basis(m_gam_smooth$mgcv_model)) # simpler bases
 
 #' we can improve the predictions somewhat by extending the basis, but this
@@ -107,7 +107,7 @@ draw(basis(m_gam_smooth$mgcv_model)) # simpler bases
 #' `https://fromthebottomoftheheap.net/2020/06/03/extrapolating-with-gams/`
 #' fit a GAM with a cubic B spline whose curvature and slope are penalized
 #' note that `k` is quite high now
-m_gam_bs <- mvgam(formula = passengers ~ s(dec_date, k = 50, bs = 'bs',
+m_gam_bs <- mvgam(formula = passengers ~ s(dec_date, k = 50, bs = "bs",
                                            m = c(3, 2, 1)),
                   knots = list(dec_date = c(min(data_train$dec_date),
                                             max(data_test$dec_date))),
@@ -128,17 +128,17 @@ draw(basis(m_gam_bs$mgcv_model, data = air_passengers)) +  # model bases
 # the model doesn't know there are seasonal cycles. it only understands that
 # the values go up and down, but not *why* they do.
 layout(1:3)
-plot(m_gam, type = 'forecast')
-plot(m_gam_smooth, type = 'forecast') # lower DRPS implies better forecasts
-plot(m_gam_bs, type = 'forecast')
+plot(m_gam, type = "forecast")
+plot(m_gam_smooth, type = "forecast") # lower DRPS implies better forecasts
+plot(m_gam_bs, type = "forecast")
 layout(1)
 
 #' more rigid models tend to extrapolate better, so we can decompose the trend
 #' into `doy` and `year` trends to allow the model to learn the seasonal cycles
 m_gam_month <- mvgam(passengers ~
-                       s(year, k = 9, bs = 'bs', # k must be <= unique(year)
+                       s(year, k = 9, bs = "bs", # k must be <= unique(year)
                          m = c(3, 2, 1)) +
-                       s(month, k = 10, bs = 'cc'),
+                       s(month, k = 10, bs = "cc"),
                      knots = list(year = c(range(air_passengers$year)),
                                   month = c(0.5, 12.5)), # ensures smooth cycles
                      family = poisson(),
@@ -151,17 +151,17 @@ m_gam_month <- mvgam(passengers ~
                      parallel = TRUE, silent = 2)
 
 plot(hindcast(m_gam_month)) # predicts similar oscillations over the years
-plot(m_gam_month, type = 'smooths') #' trends decomposed into `year` and `month`
+plot(m_gam_month, type = "smooths") #' trends decomposed into `year` and `month`
 
 #' value, slope, and curvature match at `month = 12.5 = 0.5`
-draw(m_gam_month, select = 's(month)',
+draw(m_gam_month, select = "s(month)",
      data = tibble(month = seq(0, 24, by = 0.001), year = 0))
 
 layout(matrix(1:4, ncol = 2))
-plot(m_gam, type = 'forecast')
-plot(m_gam_smooth, type = 'forecast')
-plot(m_gam_bs, type = 'forecast')
-plot(m_gam_month, type = 'forecast') # best model, but under-predicts a bit
+plot(m_gam, type = "forecast")
+plot(m_gam_smooth, type = "forecast")
+plot(m_gam_bs, type = "forecast")
+plot(m_gam_month, type = "forecast") # best model, but under-predicts a bit
 layout(1)
 
 # assuming the seasonal cycle repeats across years allows us to reduce the
@@ -180,8 +180,8 @@ plot(m_gam_month)
 # fit a GAM with an AR(1) process
 m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
                   trend_formula = ~
-                    s(year, k = 9, bs = 'tp') +
-                    s(month, k = 10, bs = 'cc'),
+                    s(year, k = 9, bs = "tp") +
+                    s(month, k = 10, bs = "cc"),
                   trend_model = AR(p = 1), # AR(1) model
                   noncentred = TRUE, # use a noncentered AR(1) model
                   knots = list(month = c(0.5, 12.5)),
@@ -225,8 +225,8 @@ data_test_12 <- air_passengers %>%
 m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
                      trend_formula = ~
                        log(lag_12_passengers) + # since we are on the log scale
-                       s(year, k = 9, bs = 'tp') +
-                       s(month, k = 10, bs = 'cc'),
+                       s(year, k = 9, bs = "tp") +
+                       s(month, k = 10, bs = "cc"),
                      trend_model = AR(p = 1),
                      noncentred = TRUE,
                      knots = list(month = c(0.5, 12.5)),
@@ -240,7 +240,7 @@ m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
                      parallel = TRUE)
 
 summary(m_gam_ar_12)
-coef(m_gam_ar_12$trend_mgcv_model)['log(lag_12_passengers)']
+coef(m_gam_ar_12$trend_mgcv_model)["log(lag_12_passengers)"]
 plot_grid(plot(m_gam_ar), # see values at lag 12 for ACF and pACF
           plot(m_gam_ar_12)) # values at lag 12 are smaller, but lag 1 is larger
 
@@ -259,8 +259,8 @@ data_train_missing <- data_train %>%
 m_gam_ar_missing <-
   mvgam(formula = passengers ~ 0,
         trend_formula = ~
-          s(year, k = 9, bs = 'tp') +
-          s(month, k = 10, bs = 'cc'),
+          s(year, k = 9, bs = "tp") +
+          s(month, k = 10, bs = "cc"),
         trend_model = AR(p = 1),
         knots = list(month = c(0.5, 12.5)),
         family = poisson(),
@@ -272,15 +272,15 @@ m_gam_ar_missing <-
         control = list(max_treedepth = 20, adapt_delta = 0.95),
         parallel = TRUE, silent = 2)
 
-plot(m_gam_ar_missing, type = 'forecast')
+plot(m_gam_ar_missing, type = "forecast")
 #' `{brms}` would assume that each observation follows the previous row!
 
 # compare to a simple GAM
 m_gam_missing <-
   mvgam(formula = passengers ~ 0,
         trend_formula = ~
-          s(year, k = 9, bs = 'tp') +
-          s(month, k = 10, bs = 'cc'),
+          s(year, k = 9, bs = "tp") +
+          s(month, k = 10, bs = "cc"),
         knots = list(month = c(0.5, 12.5)),
         family = poisson(),
         data = data_train_missing,
@@ -296,12 +296,12 @@ plot_grid(
     geom_point(aes(time, passengers), air_passengers, shape = 4, size = 0.75) +
     geom_point(aes(time, passengers), data_train_missing, na.rm = TRUE)+
     ylim(c(0, 1e3)) +
-    ggtitle('Simple GAM'),
+    ggtitle("Simple GAM"),
   plot(forecast(m_gam_ar_missing)) +
     geom_point(aes(time, passengers), air_passengers, shape = 4, size = 0.75) +
     geom_point(aes(time, passengers), data_train_missing, na.rm = TRUE)+
     ylim(c(0, 1e3)) +
-    ggtitle('AR GAM'),
+    ggtitle("AR GAM"),
   ncol = 2)
 
 #' **break**
@@ -309,7 +309,7 @@ plot_grid(
 # smooth correlations over time ----
 # continuous auto-regressive (CAR) processes
 #' data from: Gushulak et al. (2023; https://doi.org/10.1111/fwb.14192)
-pigments <- read.xlsx('https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/heads/main/data/mb/Manitoba%20pigs%20isotope%20Core%201%20April%202014.xlsx') %>%
+pigments <- read.xlsx("https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/heads/main/data/mb/Manitoba%20pigs%20isotope%20Core%201%20April%202014.xlsx") %>%
   as_tibble() %>%
   rename_with(stringr::str_to_snake, everything()) %>%
   select(mid_depth_cm, year, diatox, percentn) %>%
@@ -322,45 +322,45 @@ pigments <- read.xlsx('https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/head
             .by = year) %>%
   arrange(year) %>%
   mutate(interval = year - lag(year),
-         series = factor('core 1'))
+         series = factor("core 1"))
 
 # sediment age decreases nonlinearly with sample depth
 ggplot(pigments, aes(year, mid_depth_cm)) +
   geom_point(alpha = 0.75) +
   geom_path() +
-  xlab('Year CE') +
-  scale_y_reverse('Sample depth (cm)') +
-  annotate('segment', x = -Inf, xend = -Inf, y = -Inf, yend = Inf,
-           arrow = arrow(length = unit(0.5, 'cm'), ends = 'last',
-                         type = 'closed'), color = 'darkorange') +
+  xlab("Year CE") +
+  scale_y_reverse("Sample depth (cm)") +
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf,
+           arrow = arrow(length = unit(0.5, "cm"), ends = "last",
+                         type = "closed"), color = "darkorange") +
   # Prevents clipping so left side of arrow is visible
-  coord_cartesian(clip = 'off') +
-  theme(axis.line.y = element_line(color = 'darkorange'))
+  coord_cartesian(clip = "off") +
+  theme(axis.line.y = element_line(color = "darkorange"))
 
 # time intervals vary substantially across years
 ggplot(pigments, aes(interval, mid_depth_cm)) +
   geom_path() +
   geom_point(alpha = 0.75) +
-  xlab('Time interval between samples (years)') +
-  scale_y_reverse('Sample depth (cm)') +
-  annotate('segment', x = -Inf, xend = -Inf, y = -Inf, yend = Inf,
-           arrow = arrow(length = unit(0.5, 'cm'), ends = 'last',
-                         type = 'closed')) +
-  coord_cartesian(clip = 'off')
+  xlab("Time interval between samples (years)") +
+  scale_y_reverse("Sample depth (cm)") +
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf,
+           arrow = arrow(length = unit(0.5, "cm"), ends = "last",
+                         type = "closed")) +
+  coord_cartesian(clip = "off")
 
 # plot an example time series (diatoxantin is a pigment produced by diatoms)
 # diatoms are glass-like algae: https://en.wikipedia.org/wiki/Diatom
-lab_diatox <- expression(bold(Diatoxanthin~concentration~'(nmol'~g^{'-1'}~'C)'))
+lab_diatox <- expression(bold(Diatoxanthin~concentration~"(nmol"~g^{"-1"}~"C)"))
 
 ggplot(pigments, aes(year, diatox)) +
   geom_path() +
   geom_point(alpha = 0.75) +
-  labs(x = 'Year CE', y = lab_diatox)
+  labs(x = "Year CE", y = lab_diatox)
 
 #' fit a basic GAM
 #' cannot have any NA observations: cannot have `time` column
 m_diatox_0 <- mvgam(formula = diatox ~ s(year, k = 20), # k=40 gives similar fit
-                    family = Gamma(link = 'log'),
+                    family = Gamma(link = "log"),
                     data = pigments,
                     chains = 4,
                     burnin = 500,
@@ -368,14 +368,14 @@ m_diatox_0 <- mvgam(formula = diatox ~ s(year, k = 20), # k=40 gives similar fit
                     parallel = TRUE,
                     silent = 2)
 
-plot(m_diatox_0, type = 'series') # time series not accounting for the model
+plot(m_diatox_0, type = "series") # time series not accounting for the model
 plot(m_diatox_0) # ACF is much lower once the model accounts for time
 summary(m_diatox_0)
-mcmc_plot(m_diatox_0, type = 'trace', variable = '.', regex = TRUE)
+mcmc_plot(m_diatox_0, type = "trace", variable = ".", regex = TRUE)
 draw(m_diatox_0$mgcv_model, n = 200)
 
 #' time is wrong; should be fixed in version 2.0 of `{mvgam}` later this year
-plot(m_diatox_0, type = 'forecast')
+plot(m_diatox_0, type = "forecast")
 
 #' add a `CAR(1)` term to account for continuous-time autocorrelation
 #' add a column of time for the `CAR(1)` process
@@ -385,7 +385,7 @@ plot(m_diatox_0, type = 'forecast')
 pigments_car <- pigments %>%
   #' *adding missing times causes errors with calculated residuals*
   # right_join(tibble(year = seq(min(.$year), max(.$year), by = 1)),
-  #            by = 'year') %>%
+  #            by = "year") %>%
   mutate(time = year)
 
 #' `AR(1)` fails because sampling is irregular in v. 1.1.594
@@ -393,7 +393,7 @@ if(FALSE) {
   m_diatox_ar <- mvgam(formula = diatox ~ 0,
                        trend_formula = ~ s(year, k = 30),
                        trend_model = AR(),
-                       family = Gamma(link = 'log'),
+                       family = Gamma(link = "log"),
                        data = pigments_car,
                        chains = 4,
                        burnin = 750,
@@ -407,7 +407,7 @@ if(FALSE) {
 m_diatox_car <- mvgam(formula = diatox ~ 0,
                       trend_formula = ~ s(year, k = 20),
                       trend_model = CAR(),
-                      family = Gamma(link = 'log'),
+                      family = Gamma(link = "log"),
                       data = pigments_car,
                       chains = 4,
                       burnin = 500,
@@ -416,17 +416,17 @@ m_diatox_car <- mvgam(formula = diatox ~ 0,
                       silent = 2)
 
 summary(m_diatox_car)
-mcmc_plot(m_diatox_car, type = 'trace', variable = '.', regex = TRUE)
+mcmc_plot(m_diatox_car, type = "trace", variable = ".", regex = TRUE)
 
-plot(m_diatox_car, type = 'residuals') # residuals from the model
-plot_predictions(m_diatox_car, 'year') # smooth term of year
+plot(m_diatox_car, type = "residuals") # residuals from the model
+plot_predictions(m_diatox_car, "year") # smooth term of year
 plot(hindcast(m_diatox_car)) # predictions with data points
-plot(m_diatox_car, type = 'forecast') #' predictions w data points: *bad x axis*
+plot(m_diatox_car, type = "forecast") #' predictions w data points: *bad x axis*
 
 # why is the term so smooth and uncertain?
 # we can get a clue by looking at the posterior for the CAR(1) coefficient:
-plot_grid(mcmc_plot(m_diatox_car, type = 'intervals', variable = 'ar1[1]'),
-          plot_predictions(m_diatox_car, 'year')) # smooth term of year
+plot_grid(mcmc_plot(m_diatox_car, type = "intervals", variable = "ar1[1]"),
+          plot_predictions(m_diatox_car, "year")) # smooth term of year
 
 # the trend is so smooth because the model has attributed the changes to the
 # error process rather than to the biological process. this causes the model to
@@ -438,9 +438,9 @@ plot_grid(mcmc_plot(m_diatox_car, type = 'intervals', variable = 'ar1[1]'),
 ?mgcv::smooth.construct.ad.smooth.spec
 
 m_diatox_car_ad <- mvgam(formula = diatox ~ 0,
-                         trend_formula = ~ s(year, bs = 'ad', k = 30),
+                         trend_formula = ~ s(year, bs = "ad", k = 30),
                          trend_model = CAR(),
-                         family = Gamma(link = 'log'),
+                         family = Gamma(link = "log"),
                          data = pigments_car,
                          chains = 4,
                          burnin = 500,
@@ -450,26 +450,26 @@ m_diatox_car_ad <- mvgam(formula = diatox ~ 0,
                          silent = 2)
 
 summary(m_diatox_car_ad)
-mcmc_plot(m_diatox_car_ad, type = 'trace', variable = '.', regex = TRUE)
+mcmc_plot(m_diatox_car_ad, type = "trace", variable = ".", regex = TRUE)
 
-plot(m_diatox_car_ad, type = 'residuals') # residuals from the model
-plot_predictions(m_diatox_car_ad, 'year') # smooth term of year
+plot(m_diatox_car_ad, type = "residuals") # residuals from the model
+plot_predictions(m_diatox_car_ad, "year") # smooth term of year
 plot(hindcast(m_diatox_car_ad))  # predictions with data points
 #' time is wrong; should be fixed in version 2.0 of `{mvgam}` later this year
-plot(m_diatox_car_ad, type = 'forecast')  # predictions with data points
+plot(m_diatox_car_ad, type = "forecast")  # predictions with data points
 
 # CAR(1) coefficient estimate is about the same, but the posterior's much wider
-plot_grid(mcmc_plot(m_diatox_car, type = 'intervals', variable = 'ar1[1]') +
+plot_grid(mcmc_plot(m_diatox_car, type = "intervals", variable = "ar1[1]") +
             xlim(c(0, 1)) +
-            ggtitle('Thin plate regression spline'),
-          mcmc_plot(m_diatox_car_ad, type = 'intervals', variable = 'ar1[1]') +
+            ggtitle("Thin plate regression spline"),
+          mcmc_plot(m_diatox_car_ad, type = "intervals", variable = "ar1[1]") +
             xlim(c(0, 1)) +
-            ggtitle('Adaptive spline'),
+            ggtitle("Adaptive spline"),
           ncol = 1)
 
 #' `s(year)` coefficients clearly show how the coefficients affect the basis
 #' the `rho` coefficients are the smoothness coefficients
-mcmc_plot(m_diatox_car_ad, type = 'intervals', variable = '.', regex = TRUE)
+mcmc_plot(m_diatox_car_ad, type = "intervals", variable = ".", regex = TRUE)
 
 # get methods quickly with citations (you need to add the model terms)
 how_to_cite(m_diatox_car_ad)
@@ -487,7 +487,7 @@ how_to_cite(m_diatox_car_ad)
 pigments %>%
   select(year, diatox) %>%
   mutate(row = 1:n()) %>%
-  mutate(data_2 = list(rename_with(., \(x) paste0(x, '_2'), everything()))) %>%
+  mutate(data_2 = list(rename_with(., \(x) paste0(x, "_2"), everything()))) %>%
   unnest(data_2) %>%
   filter(row_2 >= row) %>% # drop duplicate pairs (e.g., (2, 1) but not (1, 2))
   mutate(distance = abs(year - year_2)) %>%
@@ -499,9 +499,9 @@ pigments %>%
   ggplot(aes(distance, cov)) +
   geom_point(size = 2.5) +
   geom_point(aes(color = sqrt(n))) +
-  labs(x = 'Distance (years)',
-       y = expression(bold(Covariance~ '(nmol'^'2'~g^{'-2'}~'C)'))) +
-  scale_color_viridis_c(name = 'n', labels = \(x) x^2)
+  labs(x = "Distance (years)",
+       y = expression(bold(Covariance~ "(nmol"^"2"~g^{"-2"}~"C)"))) +
+  scale_color_viridis_c(name = "n", labels = \(x) x^2)
 
 # closer points are less different (lower variance)
 tibble(distance = 1:75,
@@ -517,33 +517,33 @@ tibble(distance = 1:75,
   ggplot(aes(distance, var)) +
   geom_point(size = 2.5) +
   geom_point(aes(color = sqrt(n))) +
-  geom_smooth(method = 'gam', formula = y ~ s(x, k = 5)) +
-  labs(x = 'Distance (years)',
-       y = expression(bold(Variance~ '(nmol'^'2'~g^{'-2'}~'C)'))) +
-  scale_color_viridis_c(name = 'n', labels = \(x) x^2, limits = c(0, NA))
+  geom_smooth(method = "gam", formula = y ~ s(x, k = 5)) +
+  labs(x = "Distance (years)",
+       y = expression(bold(Variance~ "(nmol"^"2"~g^{"-2"}~"C)"))) +
+  scale_color_viridis_c(name = "n", labels = \(x) x^2, limits = c(0, NA))
 
 #' just like the previous GAMs were formed by spline bases multiplied by
 #' coefficients, GPs can be interpreted as truly continuous, smooth, functions
 #' of random effects
 ggplot(pigments, aes(round(year / 50) * 50, diatox)) +
   geom_point(alpha = 0.75) +
-  geom_smooth(method = 'gam', formula = y ~ s(x, bs = 'cs', k = 5)) +
-  labs(x = 'Year CE', y = lab_diatox)
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs", k = 5)) +
+  labs(x = "Year CE", y = lab_diatox)
 
 ggplot(pigments, aes(round(year / 20) * 20, diatox)) +
   geom_point(alpha = 0.75) +
-  geom_smooth(method = 'gam', formula = y ~ s(x, bs = 'cs', k = 10)) +
-  labs(x = 'Year CE', y = lab_diatox)
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs", k = 10)) +
+  labs(x = "Year CE", y = lab_diatox)
 
 ggplot(pigments, aes(round(year, -1), diatox)) +
   geom_point(alpha = 0.75) +
-  geom_smooth(method = 'gam', formula = y ~ s(x, bs = 'cs', k = 20)) +
-  labs(x = 'Year CE', y = lab_diatox)
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs", k = 20)) +
+  labs(x = "Year CE", y = lab_diatox)
 
 ggplot(pigments, aes(round(year / 5) * 5, diatox)) +
   geom_point(alpha = 0.75) +
-  geom_smooth(method = 'gam', formula = y ~ s(x, bs = 'cs', k = 20)) +
-  labs(x = 'Year CE', y = lab_diatox)
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs", k = 20)) +
+  labs(x = "Year CE", y = lab_diatox)
 
 #' set up the response data as multivariate Gaussian rather than IID. the MVN
 #' distribution has a mean matrix and a variance-covariance matrix. If the
@@ -583,7 +583,7 @@ m_diatox_gp <- mvgam(formula = diatox ~
                           gr = FALSE, # grouping not supported by mvgam
                           scale = FALSE), # do not divide distances by max
                      trend_model = CAR(),
-                     family = Gamma(link = 'log'),
+                     family = Gamma(link = "log"),
                      data = pigments_car,
                      chains = 4,
                      burnin = 500,
@@ -594,15 +594,15 @@ m_diatox_gp <- mvgam(formula = diatox ~
 
 summary(m_diatox_gp)
 
-plot(m_diatox_gp, type = 'residuals') # residuals from the model
-plot_predictions(m_diatox_gp, 'year') # smooth term of year
+plot(m_diatox_gp, type = "residuals") # residuals from the model
+plot_predictions(m_diatox_gp, "year") # smooth term of year
 plot(hindcast(m_diatox_gp)) # predictions with data points
 
 # GPs allow users to evaluate the continuous-time correlation as a function of
 # the distance between observations. In our model, observations are
 # conditionally approximately independent after ~40 years.
 # intervals are 60% and 90% CIs
-as.data.frame(m_diatox_gp, variable = 'gp_', regex = TRUE) %>%
+as.data.frame(m_diatox_gp, variable = "gp_", regex = TRUE) %>%
   plot_kernels(max_time = 50)
 
 #' `rho`:
@@ -624,7 +624,7 @@ m_diatox_pn <- mvgam(formula = diatox ~
                                scale = FALSE), # do not divide distances by max
                      trend_model = CAR(),
                      noncentred = TRUE, # helps avoid conflations between terms
-                     family = Gamma(link = 'log'),
+                     family = Gamma(link = "log"),
                      data = pigments_car,
                      chains = 4,
                      burnin = 500,
@@ -634,7 +634,7 @@ m_diatox_pn <- mvgam(formula = diatox ~
 
 summary(m_diatox_pn)
 
-plot_predictions(m_diatox_pn, 'percent_n', type = 'expected')
+plot_predictions(m_diatox_pn, "percent_n", type = "expected")
 
 expand_grid(percent_n = c(0.4, 0.6, 0.8),
             time = gratia:::seq_min_max(pigments$year, n = 400),
@@ -648,7 +648,7 @@ expand_grid(percent_n = c(0.4, 0.6, 0.8),
   #' addition, this error message was raised:the following required variables
   #' are missing from newdata:
   #' seriesBug Tracker: https://github.com/vincentarelbundock/marginaleffects/issues
-  bind_cols(., predict(m_diatox_pn, newdata = ., type = 'expected')) %>%
+  bind_cols(., predict(m_diatox_pn, newdata = ., type = "expected")) %>%
   ggplot(aes(time, Estimate, group = percent_n)) +
   coord_cartesian(ylim = c(0, 200)) +
   geom_ribbon(aes(time, ymin = Q2.5, ymax = Q97.5, fill = percent_n),
@@ -658,11 +658,11 @@ expand_grid(percent_n = c(0.4, 0.6, 0.8),
   geom_point(aes(year, diatox), pigments, size = 2) +
   geom_point(aes(year, diatox, color = percent_n), pigments, size = 1) +
   labs(x = NULL, y = lab_diatox) +
-  scale_fill_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
+  scale_fill_acton(name = "% N (dry weight)", breaks = c(0.4, 0.6, 0.8, 1),
                    reverse = TRUE) +
-  scale_color_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
+  scale_color_acton(name = "% N (dry weight)", breaks = c(0.4, 0.6, 0.8, 1),
                     reverse = TRUE) +
-  theme(legend.position = 'top')
+  theme(legend.position = "top")
 
 # diatox vs % N
 expand_grid(
@@ -670,7 +670,7 @@ expand_grid(
   year = gratia:::seq_min_max(pigments$year, n = 5),
   series = unique(pigments_car$series)) %>%
   mutate(time = year) %>%
-  bind_cols(., predict(m_diatox_pn, newdata = ., type = 'expected')) %>%
+  bind_cols(., predict(m_diatox_pn, newdata = ., type = "expected")) %>%
   ggplot(aes(percent_n, Estimate, group = year)) +
   coord_cartesian(ylim = c(0, 200)) +
   geom_ribbon(aes(percent_n, ymin = Q2.5, ymax = Q97.5, fill = year),
@@ -679,9 +679,9 @@ expand_grid(
   geom_line(aes(color = year), lwd = 1) +
   geom_point(aes(percent_n, diatox), pigments, size = 2) +
   geom_point(aes(percent_n, diatox, color = year), pigments, size = 1) +
-  labs(x = '% N (dry weight)', y = lab_diatox) +
-  scale_color_iridescent(name = 'Year') +
-  scale_fill_iridescent(name = 'Year')
+  labs(x = "% N (dry weight)", y = lab_diatox) +
+  scale_color_iridescent(name = "Year") +
+  scale_fill_iridescent(name = "Year")
 
 # surface plot
 expand_grid(
@@ -689,22 +689,22 @@ expand_grid(
   year = gratia:::seq_min_max(pigments$year, n = 100),
   series = unique(pigments_car$series)) %>%
   mutate(time = year) %>%
-  bind_cols(., predict(m_diatox_pn, newdata = ., type = 'expected')) %>%
+  bind_cols(., predict(m_diatox_pn, newdata = ., type = "expected")) %>%
   ggplot(aes(year, percent_n, fill = Estimate)) +
   geom_raster() +
-  scale_x_continuous('Year CE', expand = c(0, 0)) +
-  scale_y_continuous('% N (dry weight)', expand = c(0, 0)) +
-  scale_fill_bamako(name = lab_diatox, limits = c(0, 200), na.value = 'white') +
-  theme(legend.position = 'top')
+  scale_x_continuous("Year CE", expand = c(0, 0)) +
+  scale_y_continuous("% N (dry weight)", expand = c(0, 0)) +
+  scale_fill_bamako(name = lab_diatox, limits = c(0, 200), na.value = "white") +
+  theme(legend.position = "top")
 
 #' allow the effect of `percent_n` to vary smoothly
 m_diatox_pn <- mvgam(formula = diatox ~
                        gp(year, c = 5/4, k = 30, gr = FALSE, scale = FALSE) +
-                       s(percent_n, k = 5, bs = 'tp') +
-                       ti(year, percent_n, k = c(10, 5), bs = c('gp', 'tp')),
+                       s(percent_n, k = 5, bs = "tp") +
+                       ti(year, percent_n, k = c(10, 5), bs = c("gp", "tp")),
                      trend_model = CAR(),
                      noncentred = TRUE, # helps avoid conflations between terms
-                     family = Gamma(link = 'log'),
+                     family = Gamma(link = "log"),
                      data = pigments_car,
                      chains = 4,
                      burnin = 500,
@@ -718,7 +718,7 @@ expand_grid(
   year = gratia:::seq_min_max(pigments$year, n = 5),
   series = unique(pigments_car$series)) %>%
   mutate(time = year) %>%
-  bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = 'expected')) %>%
+  bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = "expected")) %>%
   ggplot(aes(percent_n, Estimate, group = year)) +
   coord_cartesian(ylim = c(0, 200)) +
   geom_ribbon(aes(percent_n, ymin = Q2.5, ymax = Q97.5, fill = year,
@@ -727,9 +727,9 @@ expand_grid(
   geom_line(aes(color = year), lwd = 1) +
   geom_point(aes(percent_n, diatox), pigments, size = 2.5) +
   geom_point(aes(percent_n, diatox, color = year), pigments, size = 1) +
-  labs(x = '% N (dry weight)', y = lab_diatox) +
-  scale_color_iridescent(name = 'Year') +
-  scale_fill_iridescent(name = 'Year')
+  labs(x = "% N (dry weight)", y = lab_diatox) +
+  scale_color_iridescent(name = "Year") +
+  scale_fill_iridescent(name = "Year")
 
 # diatox vs year
 expand_grid(
@@ -737,7 +737,7 @@ expand_grid(
   year = gratia:::seq_min_max(pigments$year, n = 400),
   series = unique(pigments_car$series)) %>%
   mutate(time = year) %>%
-  bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = 'expected')) %>%
+  bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = "expected")) %>%
   ggplot(aes(year, Estimate, group = percent_n)) +
   coord_cartesian(ylim = c(0, 200)) +
   geom_ribbon(aes(year, ymin = Q2.5, ymax = Q97.5, fill = percent_n,
@@ -748,11 +748,11 @@ expand_grid(
   geom_point(aes(year, diatox), pigments, size = 2) +
   geom_point(aes(year, diatox, color = percent_n), pigments, size = 1) +
   labs(x = NULL, y = lab_diatox) +
-  scale_fill_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
+  scale_fill_acton(name = "% N (dry weight)", breaks = c(0.4, 0.6, 0.8, 1),
                    reverse = TRUE) +
-  scale_color_acton(name = '% N (dry weight)', breaks = c(0.4, 0.6, 0.8, 1),
+  scale_color_acton(name = "% N (dry weight)", breaks = c(0.4, 0.6, 0.8, 1),
                     reverse = TRUE) +
-  theme(legend.position = 'top')
+  theme(legend.position = "top")
 
 # surface plot
 expand_grid(
@@ -760,17 +760,17 @@ expand_grid(
   year = gratia:::seq_min_max(pigments$year, n = 100),
   series = unique(pigments_car$series)) %>%
   mutate(time = year) %>%
-  bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = 'expected')) %>%
+  bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = "expected")) %>%
   ggplot(aes(year, percent_n, fill = Estimate)) +
   geom_raster() +
-  scale_x_continuous('Year CE', expand = c(0, 0)) +
-  scale_y_continuous('% N (dry weight)', expand = c(0, 0)) +
-  scale_fill_bamako(name = lab_diatox, limits = c(0, 200), na.value = 'white') +
-  theme(legend.position = 'top')
+  scale_x_continuous("Year CE", expand = c(0, 0)) +
+  scale_y_continuous("% N (dry weight)", expand = c(0, 0)) +
+  scale_fill_bamako(name = lab_diatox, limits = c(0, 200), na.value = "white") +
+  theme(legend.position = "top")
 
 #' dynamic coefficient models in `{mgcv}`
 #' in `{mgcv}`, you can fit the term using `s(year, by = percent_n)`, or, more
-#' specifically `s(year, by = percent_n, bs = 'gp')`
+#' specifically `s(year, by = percent_n, bs = "gp")`
 #' in `{brms}`, you can also fit the term using `gp(year, by = percent_n, ...)`
 
 m_diatox_pn$mgcv_model #' `{mvgam}` v.1.1.594 uses tp basis

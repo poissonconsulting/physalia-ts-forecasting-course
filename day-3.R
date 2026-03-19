@@ -1,4 +1,4 @@
-source('packages.R') # attach necessary packages
+source("packages.R") # attach necessary packages
 
 #' *Stete space mdoels*:
 #' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
@@ -29,12 +29,12 @@ data_test <- filter(air_passengers, year > 1955)
 
 m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
                   trend_formula = ~
-                    s(year, k = 5, bs = 'tp') +
-                    s(month, k = 10, bs = 'cc'),
+                    s(year, k = 5, bs = "tp") +
+                    s(month, k = 10, bs = "cc"),
                   trend_model = AR(p = 1), # AR(1) model
                   noncentred = TRUE, # use a noncentered AR(1) model
                   knots = list(month = c(0.5, 12.5)),
-                  family = poisson(link = 'log'),
+                  family = poisson(link = "log"),
                   data = data_train,
                   newdata = data_test, # calculate forecast while fitting
                   chains = 4,
@@ -62,17 +62,17 @@ m_gam_ar$model_output # summary table of parameter samples
 m_gam_ar$model_output@sim$samples[[1]][1:10, 1:8] # df of samples for chain 1
 
 # view posterior draws of the trend
-plot(m_gam_ar, type = 'forecast') # with base plot
+plot(m_gam_ar, type = "forecast") # with base plot
 plot(forecast(m_gam_ar)) # with ggplot2
 plot(forecast(m_gam_ar), realisations = TRUE) # CIs = summaries of realizations
 
 # random draws from the posterior (NOTE: x axis is time since first observation)
-plot(m_gam_ar, type = 'trend', realisations = TRUE, n_realisations = 10) +
-  geom_vline(xintercept = nrow(data_train), lty = 'dashed')
+plot(m_gam_ar, type = "trend", realisations = TRUE, n_realisations = 10) +
+  geom_vline(xintercept = nrow(data_train), lty = "dashed")
 
 # draws summarized to credible intervals (NOTE: x axis is time since first obs)
-plot(m_gam_ar, type = 'trend') +
-  geom_vline(xintercept = nrow(data_train), lty = 'dashed')
+plot(m_gam_ar, type = "trend") +
+  geom_vline(xintercept = nrow(data_train), lty = "dashed")
 
 # generate forectasts for additional new data
 # predicting later is useful if data are not available or too large to add
@@ -107,27 +107,27 @@ plot_preds <- function(.d, scale){
     ggplot() +
     geom_ribbon(aes(time, ymin = Q2.5, ymax = Q97.5), alpha = 0.3) +
     geom_line(aes(time, Estimate)) +
-    labs(x = 'Time', y = paste0('Estiamted effect (', scale, ' scale)'))
+    labs(x = "Time", y = paste0("Estiamted effect (", scale, " scale)"))
 }
 
 # on link scale: for understanding coefficients of the linear predictor
-predict(m_gam_ar, type = 'link') %>% #' = `brms::posterior_linpred()`
+predict(m_gam_ar, type = "link") %>% #' = `brms::posterior_linpred()`
   plot_preds(scale = "link") +
   ylim(c(0, 400))
 
 # on expected scale: for understanding effects on the mean response
-predict(m_gam_ar, type = 'expected') %>% #' = `brms::posterior_epred()`
-  plot_preds(scale = 'expected') +
+predict(m_gam_ar, type = "expected") %>% #' = `brms::posterior_epred()`
+  plot_preds(scale = "expected") +
   ylim(c(0, 400))
 
 # on response scale: for understanding effects on the individual observations
-predict(m_gam_ar, type = 'response') %>% #' = `brms::posterior_predict()`
-  plot_preds(scale = 'response') +
+predict(m_gam_ar, type = "response") %>% #' = `brms::posterior_predict()`
+  plot_preds(scale = "response") +
   ylim(c(0, 400))
 
 #' can include process error with `process_error = TRUE`
-predict(m_gam_ar, type = 'response', process_error = TRUE) %>%
-  plot_preds(scale = 'response') +
+predict(m_gam_ar, type = "response", process_error = TRUE) %>%
+  plot_preds(scale = "response") +
   ylim(c(0, 400))
 
 # example with count data:
@@ -143,19 +143,19 @@ predict(m_gam_ar, type = 'response', process_error = TRUE) %>%
 #' allows to add intercept term to the partial effects
 #' intercept = est. mean response, averaged across all smooths, on link scale
 draw(m_gam_ar$trend_mgcv_model)
-plot(forecast(m_gam_ar, type = 'link'))
-head(as.vector(forecast(m_gam_ar, type = 'link')$forecasts$series1))
+plot(forecast(m_gam_ar, type = "link"))
+head(as.vector(forecast(m_gam_ar, type = "link")$forecasts$series1))
 
-#' if `link = 'log'` (does not apply if `link = 'logit'`):
+#' if `link = "log"` (does not apply if `link = "logit"`):
 #' expected-scale partial effects are centered around 1
 #' show the relative change in response with the predictor
 #' allows to multiply intercept term by the partial effects
 #' intercept = est. mean response, averaged across all smooths, on resp. scale
 draw(m_gam_ar$trend_mgcv_model, fun = exp) # relative change in passengers
 draw(m_gam_ar$trend_mgcv_model, # partial change in passengers
-     fun = \(x) exp(coef(m_gam_ar$trend_mgcv_model)['(Intercept)']) * exp(x))
-plot(forecast(m_gam_ar, type = 'expected'))
-head(as.vector(forecast(m_gam_ar, type = 'expected')$forecasts$series1))
+     fun = \(x) exp(coef(m_gam_ar$trend_mgcv_model)["(Intercept)"]) * exp(x))
+plot(forecast(m_gam_ar, type = "expected"))
+head(as.vector(forecast(m_gam_ar, type = "expected")$forecasts$series1))
 
 #' *NOTE:* in `{mgcv}` and `{gratia}`, predictions on the "response" scale are
 #'         actually on the expected scale, since they only include uncertainty
@@ -163,24 +163,24 @@ head(as.vector(forecast(m_gam_ar, type = 'expected')$forecasts$series1))
 #'         in `{mvgam}`, predictions on the response scale include uncertainty
 #'         at the observation level, rather than just the mean, and the values
 #'         are always integers for count models
-plot(forecast(m_gam_ar, type = 'response'))
-head(as.vector(forecast(m_gam_ar, type = 'response')$forecasts$series1))
+plot(forecast(m_gam_ar, type = "response"))
+head(as.vector(forecast(m_gam_ar, type = "response")$forecasts$series1))
 
 # useful for checking if the model has a good fit: can it simulate data well?
-pp_check(m_gam_ar, type = 'ribbon', ndraws = 100)
-pp_check(m_gam_ar, type = 'intervals', ndraws = 100)
-pp_check(m_gam_ar, type = 'scatter', ndraws = 9)
-pp_check(m_gam_ar, type = 'scatter_avg', ndraws = 100)
-pp_check(m_gam_ar, type = 'hist', ndraws = 8, bins = 10)
-pp_check(m_gam_ar, type = 'dens_overlay', ndraws = 100)
-pp_check(m_gam_ar, type = 'ecdf_overlay', ndraws = 100)
+pp_check(m_gam_ar, type = "ribbon", ndraws = 100)
+pp_check(m_gam_ar, type = "intervals", ndraws = 100)
+pp_check(m_gam_ar, type = "scatter", ndraws = 9)
+pp_check(m_gam_ar, type = "scatter_avg", ndraws = 100)
+pp_check(m_gam_ar, type = "hist", ndraws = 8, bins = 10)
+pp_check(m_gam_ar, type = "dens_overlay", ndraws = 100)
+pp_check(m_gam_ar, type = "ecdf_overlay", ndraws = 100)
 
-pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'mean', binwidth = 1)
-pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'median', binwidth = 2.5)
-pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'sd', binwidth = 2.5)
-pp_check(m_gam_ar, type = 'stat', ndraws = 10, stat = 'var', binwidth = 250)
+pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "mean", binwidth = 1)
+pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "median", binwidth = 2.5)
+pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "sd", binwidth = 2.5)
+pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "var", binwidth = 250)
 
-pp_check(m_gam_ar, type = 'stat_2d', ndraws = 10, stat = c('median', 'sd'))
+pp_check(m_gam_ar, type = "stat_2d", ndraws = 10, stat = c("median", "sd"))
 
 #' **break**
 
@@ -191,7 +191,7 @@ m_bad <- mvgam(formula = passengers ~ 1,
                trend_model = AR(p = 1), # AR(1) model
                noncentred = TRUE, # use a noncentered AR(1) model
                knots = list(month = c(0.5, 12.5)),
-               family = poisson(link = 'log'),
+               family = poisson(link = "log"),
                data = data_train, # calculate forecast while fitting
                chains = 4,
                burnin = 750,
@@ -203,32 +203,32 @@ m_bad <- mvgam(formula = passengers ~ 1,
 plot(hindcast(m_gam_ar))
 plot(hindcast(m_bad))
 
-plot_predictions(m_gam_ar, by = 'time') # GAM model "understands" the trends
-plot_predictions(m_bad, by = 'time') # the AR model always assumes stationarity
+plot_predictions(m_gam_ar, by = "Time") # GAM model "understands" the trends
+plot_predictions(m_bad, by = "Time") # the AR model always assumes stationarity
 
 loo_compare(m_gam_ar, m_bad) # TODO: fix warning
 #' TODO: find data points with bad `k` and adjust the model accordingly
 
 # predicting from new data (no terms to predict for the bad model)
-plot_predictions(m_gam_ar, condition = 'month', points = 0.5)
-plot_predictions(m_gam_ar, condition = 'year', points = 0.5)
+plot_predictions(m_gam_ar, condition = "month", points = 0.5)
+plot_predictions(m_gam_ar, condition = "year", points = 0.5)
 
 # rates of change: useful for link and expected scales, not for response scale
 newd_slopes <- tibble(time = 1:100, year = mean(data_train$year),
                       month = seq(0, 12, length.out = length(time)))
 
-plot_slopes(m_gam_ar, variables = 'month', by = 'month', type = 'link',
+plot_slopes(m_gam_ar, variables = "month", by = "month", type = "link",
             newdata = newd_slopes) +
-  geom_hline(yintercept = 0, linetype = 'dashed')
+  geom_hline(yintercept = 0, linetype = "dashed")
 
-plot_slopes(m_gam_ar, variables = 'month', by = 'month', type = 'expected',
+plot_slopes(m_gam_ar, variables = "month", by = "month", type = "expected",
             newdata = newd_slopes) +
-  geom_hline(yintercept = 0, linetype = 'dashed')
+  geom_hline(yintercept = 0, linetype = "dashed")
 
 # FIXME: is this a bug?
-plot_slopes(m_gam_ar, variables = 'month', by = 'month', type = 'response',
+plot_slopes(m_gam_ar, variables = "month", by = "month", type = "response",
             newdata = newd_slopes) +
-  geom_hline(yintercept = 0, linetype = 'dashed') +
+  geom_hline(yintercept = 0, linetype = "dashed") +
   coord_cartesian(ylim = c(-1000, 1000))
 
 # assessing model fits with forecasts ----
@@ -272,7 +272,7 @@ calculate_sis <- function(u, l, alpha, y) {
 # rather than focusing on point-specific estimates of model performance, it's
 # better to look at the full forecast distribution rather than just a subset of
 # points
-# this what we've been doing when comparing forecasts with DRPS/CRPS!
+# this is what we've been doing when comparing forecasts with DRPS/CRPS!
 # DRPS/CRPS: Discrete/Continuous Ranked Probability Score
 plot(forecast(m_gam_ar))
 
@@ -290,25 +290,25 @@ d_obs <- filter(d_probs, sampled)
 
 # probability densities
 ggplot() +
-  geom_area(aes(y, dens), d_probs, fill = 'grey', color = 'black') +
-  geom_rug(aes(y), d_obs, lwd = 1, color = 'red4') +
+  geom_area(aes(y, dens), d_probs, fill = "grey", color = "black") +
+  geom_rug(aes(y), d_obs, lwd = 1, color = "red4") +
   geom_segment(aes(x = y, xend = y, y = 0, yend = dens),
-               d_obs, color = 'red4') +
+               d_obs, color = "red4") +
   geom_segment(aes(x = y, xend = -Inf, y = dens, yend = dens),
-               d_obs, color = 'red4',
-               arrow = arrow(angle = 15, type = 'closed')) +
-  ylab('Probability density')
+               d_obs, color = "red4",
+               arrow = arrow(angle = 15, type = "closed")) +
+  ylab("Probability density")
 
 # log probability density
 ggplot() +
-  geom_area(aes(y, log_dens), d_probs, fill = 'grey', color = 'black') +
-  geom_rug(aes(y), d_obs, lwd = 1, color = 'red4') +
+  geom_area(aes(y, log_dens), d_probs, fill = "grey", color = "black") +
+  geom_rug(aes(y), d_obs, lwd = 1, color = "red4") +
   geom_segment(aes(x = y, xend = y, y = 0, yend = log_dens),
-               d_obs, color = 'red4') +
+               d_obs, color = "red4") +
   geom_segment(aes(x = y, xend = -Inf, y = log_dens, yend = log_dens),
-               d_obs, color = 'red4',
-               arrow = arrow(angle = 15, type = 'closed')) +
-  ylab('Log(probability density)')
+               d_obs, color = "red4",
+               arrow = arrow(angle = 15, type = "closed")) +
+  ylab("Log(probability density)")
 
 # taking log(density):
 # - helps keep numbers more manageable
@@ -337,13 +337,13 @@ score(forecast(m_gam_ar))$series1 %>% head() # CRPS by default; = DRPS in output
 score(forecast(m_gam_ar))$all_series %>% head()
 
 # DRPS produces same values since P(Y = x) = 0 at non-integer values of x
-score(forecast(m_gam_ar), score = 'drps')$series1 %>% head()
-score(forecast(m_gam_ar), score = 'drps')$all_series %>% head()
+score(forecast(m_gam_ar), score = "drps")$series1 %>% head()
+score(forecast(m_gam_ar), score = "drps")$all_series %>% head()
 
 #' Expected log predictive density, as used in `loo_compare()`
-score(forecast(m_gam_ar, type = 'link'), score = 'elpd')$series1 %>% head()
+score(forecast(m_gam_ar, type = "link"), score = "elpd")$series1 %>% head()
 
 # averaging SIS values across many intervals will converge to DPRS/CPRS values
-score(forecast(m_gam_ar), score = 'sis')$series1 %>% head()
-score(forecast(m_gam_ar), score = 'sis', interval_width = 0.5)$series1 %>% head()
-score(forecast(m_gam_ar), score = 'sis')$all_series %>% head()
+score(forecast(m_gam_ar), score = "sis")$series1 %>% head()
+score(forecast(m_gam_ar), score = "sis", interval_width = 0.5)$series1 %>% head()
+score(forecast(m_gam_ar), score = "sis")$all_series %>% head()
