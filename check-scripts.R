@@ -1,3 +1,5 @@
+library("dplyr")
+
 # check for tasks to do
 findR::findRscript(pattern = "TODO", path = ".", case.sensitive = FALSE,
                    comments = TRUE) %>%
