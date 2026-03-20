@@ -310,7 +310,8 @@ plot_slopes(m_gam_ar, variables = "month", by = "month", type = "expected",
             newdata = newd_slopes) +
   geom_hline(yintercept = 0, linetype = "dashed")
 
-# FIXME: is this a bug?
+# rates of change are too dramatic on the response scale because observations
+# are too stochastic
 plot_slopes(m_gam_ar, variables = "month", by = "month", type = "response",
             newdata = newd_slopes) +
   geom_hline(yintercept = 0, linetype = "dashed") +
