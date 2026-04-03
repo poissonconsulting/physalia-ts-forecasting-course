@@ -365,7 +365,6 @@ ggplot(pigments, aes(year, diatox)) +
   labs(x = "Year CE", y = lab_diatox)
 
 #' fit a basic GAM
-#' cannot have any NA observations: cannot have `time` column
 m_diatox_0 <- mvgam(formula = diatox ~ s(year, k = 20), # k=40 gives similar fit
                     family = Gamma(link = "log"),
                     data = pigments,
