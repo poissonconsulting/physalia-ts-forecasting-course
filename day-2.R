@@ -230,7 +230,8 @@ data_test_12 <- air_passengers %>%
 
 # add a term to crudely account for a 12-month autocorrelation
 # fits in ~100 seconds
-m_gam_ar_12 <- mvgam(formula = passengers ~
+m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
+                     trend_formula = ~
                        s(year, k = 9, bs = "tp") +
                        s(month, k = 10, bs = "cc") +
                        log(lag_12_passengers),
@@ -243,12 +244,12 @@ m_gam_ar_12 <- mvgam(formula = passengers ~
                      chains = 4,
                      burnin = 750,
                      samples = 500,
-                     control = list(max_treedepth = 20, adapt_delta = 0.95),
+                     control = list(max_treedepth = 20),
                      parallel = TRUE)
 
 summary(m_gam_ar_12)
-coef(m_gam_ar_12$mgcv_model)["log(lag_12_passengers)"]
 plot_grid(plot(m_gam_12), # see values at lag 12 for ACF and pACF
+coef(m_gam_ar_12$trend_mgcv_model)["log(lag_12_passengers)"]
           plot(m_gam_ar_12)) # values at lag 12 are smaller, but lag 1 is larger
 
 #' how does `{mvgam}` handle many missing data?
@@ -258,13 +259,14 @@ plot_grid(plot(m_gam_12), # see values at lag 12 for ACF and pACF
 #' other advantages of using `{mvgam}` over `{brms}` include:
 #' - `{mvgam}` allows each time series to have different AR1 parameters
 #' - `{mvgam}` can model the correlations among errors of each time series
-#' - `{mvgam}` can fit the dynamic processes using a State-Space approach
+#' - `{mvgam}` can fit the dynamic processes using State-Space Models (SSMs)
 data_train_missing <- data_train %>%
   mutate(passengers = if_else(1:n() %in% sample(1:n(), n() * 0.9), NA_real_,
                               passengers))
 
 m_gam_ar_missing <-
-  mvgam(formula = passengers ~
+  mvgam(formula = passengers ~ 0,
+        trend_formula = ~
           s(year, k = 9, bs = "tp") +
           s(month, k = 10, bs = "cc"),
         trend_model = AR(p = 1),
@@ -303,12 +305,12 @@ plot_grid(
     geom_point(aes(time, passengers), air_passengers, shape = 4, size = 0.75) +
     geom_point(aes(time, passengers), data_train_missing, na.rm = TRUE)+
     ylim(c(0, 1e3)) +
-    ggtitle("GAM with no latent trend model"),
+    ggtitle("SSM GAM with uncorrelated error"),
   plot(forecast(m_gam_ar_missing)) +
     geom_point(aes(time, passengers), air_passengers, shape = 4, size = 0.75) +
     geom_point(aes(time, passengers), data_train_missing, na.rm = TRUE)+
     ylim(c(0, 1e3)) +
-    ggtitle("AR GAM"),
+    ggtitle("SSM GAM with AR(1) trend"),
   ncol = 1)
 
 #' **break**
