@@ -217,6 +217,7 @@ plot(m_gam_ar)
 plot(forecast(m_gam_ar))
 plot(hindcast(m_gam_ar))
 
+# add a term of lag-12 passengers
 #' *NOTE:* we need to drop rows with `NA` lagged y values because the model
 #' can't use them. specifying the AR process in the `trends_model` argument
 #' avoids this issue. This is why we shouldn't just add the lagged values as
