@@ -95,7 +95,8 @@ m_gam_smooth <- mvgam(formula = passengers ~ s(dec_date, k = 10),
                       burnin = 500,
                       samples = 500,
                       control = list(max_treedepth = 20, adapt_delta = 0.9),
-                      parallel = TRUE, silent = 2)
+                      parallel = TRUE,
+                      silent = 2)
 
 # predictions are better, but the model is missing the seasonality
 plot(hindcast(m_gam_smooth))
@@ -150,7 +151,8 @@ m_gam_month <- mvgam(passengers ~
                      burnin = 500,
                      samples = 500,
                      control = list(max_treedepth = 20, adapt_delta = 0.9),
-                     parallel = TRUE, silent = 2)
+                     parallel = TRUE,
+                     silent = 2)
 
 plot(hindcast(m_gam_month)) # predicts similar oscillations over the years
 plot(m_gam_month, type = "smooths") #' trends decomposed into `year` and `month`
@@ -268,7 +270,8 @@ m_gam_ar_missing <-
         chains = 4,
         burnin = 750,
         samples = 500,
-        parallel = TRUE, silent = 2)
+        parallel = TRUE,
+        silent = 2)
 
 plot(m_gam_ar_missing, type = "forecast")
 #' `{brms}` would assume that each observation follows the previous row!
@@ -286,7 +289,8 @@ m_gam_missing <-
         chains = 4,
         burnin = 500,
         samples = 500,
-        parallel = TRUE, silent = 2)
+        parallel = TRUE,
+        silent = 2)
 
 # AR GAM has much more uncertainty
 plot_grid(
