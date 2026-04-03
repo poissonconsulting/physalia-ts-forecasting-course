@@ -367,6 +367,11 @@ ggplot(pigments, aes(year, diatox)) +
   labs(x = "Year CE", y = lab_diatox)
 
 #' fit a basic GAM
+#' using observation formula because we can't separate it from the latent trend
+#' technically, we could add `s(year)` to both formulas, since the values
+#' changed over the years (trend process) and the pigment possibly decayed over
+#' time (observation process), but we can't disentangle the two with only one
+#' time series
 m_diatox_0 <- mvgam(formula = diatox ~ s(year, k = 20),
                     family = Gamma(link = "log"),
                     data = pigments,
