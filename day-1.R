@@ -557,7 +557,7 @@ ggplot() +
 summary(m_temp)
 
 # modeling nonlinear trends ----
-#' fitting a GLM with a polynomial term
+#' fitting a GLM with a polynomial term (note: still technically linear terms)
 #' The terms can't be functions of each other, so we need to add columns of the
 #' polynomial that are independent of each other (i.e., orthogonal) to avoid
 #' complete collinearity and non-identifiability issues when fitting.
@@ -735,6 +735,9 @@ ggplot() +
   scale_color_highcontrast(name = "Model") +
   theme(legend.position = "top")
 
+# clear autocorrelation at lag 1
+plot(m_temp)
+
 #' add an `AR(1)` component
 m_temp_ar <- mvgam(formula = temp ~ 0,
                    trend_formula = ~ s(doy, k = 10, bs = "cr"),
@@ -745,6 +748,11 @@ m_temp_ar <- mvgam(formula = temp ~ 0,
 
 # chains are occasionally not well-mixed even if Rhat is near 1
 mcmc_plot(m_temp_ar, type = "trace")
-summary(m_temp_ar)
+# chains are not well mixed: conflicting coefficients
+mcmc_plot(m_temp_ar, type = "trace_highlight", highlight = 2)
+summary(m_temp_ar) # Rhat can be deceiving
 plot(m_temp_ar) # no appreciable correlations at any lags
 # uncertainty at greater lags is because of missing data
+
+# compare the autocorrelation to that of the previous model
+plot(m_temp)
