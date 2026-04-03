@@ -1,6 +1,6 @@
 source("packages.R") # attach necessary packages
 
-#' *Stete space mdoels*:
+#' *State space models*:
 #' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
 #' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
 #' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
