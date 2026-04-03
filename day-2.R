@@ -367,7 +367,7 @@ ggplot(pigments, aes(year, diatox)) +
   labs(x = "Year CE", y = lab_diatox)
 
 #' fit a basic GAM
-m_diatox_0 <- mvgam(formula = diatox ~ s(year, k = 20), # k=40 gives similar fit
+m_diatox_0 <- mvgam(formula = diatox ~ s(year, k = 20),
                     family = Gamma(link = "log"),
                     data = pigments,
                     chains = 4,
