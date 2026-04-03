@@ -739,8 +739,7 @@ ggplot() +
 plot(m_temp)
 
 #' add an `AR(1)` component
-m_temp_ar <- mvgam(formula = temp ~ 0,
-                   trend_formula = ~ s(doy, k = 10, bs = "cr"),
+m_temp_ar <- mvgam(formula = temp ~ s(doy, k = 10, bs = "cr"),
                    trend_model = AR(1),
                    family = gaussian(), data = d_temp_missing, noncentred = TRUE,
                    parallel = TRUE, burnin = 500, samples = 1000,
