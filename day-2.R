@@ -174,12 +174,15 @@ layout(1)
 # autocorrelation present at lags 1 and 12, but much better than previous models
 plot(m_gam_month)
 
-# SSMs separate true trend from obervation error by assuming that
+# state space models (SSMs) the separate true latent trend from observation
+# trend by assuming that:
 # (1) true values of the response are autocorrelated (e.g., y_t will likely be
 # similar to y_{t-1}), and
 # (2) residuals are independent once we account for the model (including
 # previous values of y)
-# see Auger-Méthé et al. (2021; https://doi.org/10.1002/ecm.1470) for more info
+# for more info, see:
+# - Auger-Méthé et al. (2021; https://doi.org/10.1002/ecm.1470)
+# - https://nicholasjclark.github.io/mvgam/articles/trend_formulas.html
 
 # fit a GAM with an AR(1) process
 m_gam_ar <- mvgam(formula = passengers ~
