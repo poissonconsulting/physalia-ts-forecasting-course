@@ -178,8 +178,7 @@ plot(m_gam_month)
 # see Auger-Méthé et al. (2021; https://doi.org/10.1002/ecm.1470) for more info
 
 # fit a GAM with an AR(1) process
-m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
-                  trend_formula = ~
+m_gam_ar <- mvgam(formula = passengers ~
                     s(year, k = 9, bs = "tp") +
                     s(month, k = 10, bs = "cc"),
                   trend_model = AR(p = 1), # AR(1) model
@@ -222,11 +221,10 @@ data_test_12 <- air_passengers %>%
 
 # add a term to crudely account for a 12-month autocorrelation
 # fits in ~100 seconds
-m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
-                     trend_formula = ~
-                       log(lag_12_passengers) + # since we are on the log scale
+m_gam_ar_12 <- mvgam(formula = passengers ~
                        s(year, k = 9, bs = "tp") +
-                       s(month, k = 10, bs = "cc"),
+                       s(month, k = 10, bs = "cc") +
+                       log(lag_12_passengers),
                      trend_model = AR(p = 1),
                      noncentred = TRUE,
                      knots = list(month = c(0.5, 12.5)),
@@ -240,8 +238,8 @@ m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
                      parallel = TRUE)
 
 summary(m_gam_ar_12)
-coef(m_gam_ar_12$trend_mgcv_model)["log(lag_12_passengers)"]
-plot_grid(plot(m_gam_ar), # see values at lag 12 for ACF and pACF
+coef(m_gam_ar_12$mgcv_model)["log(lag_12_passengers)"]
+plot_grid(plot(m_gam_12), # see values at lag 12 for ACF and pACF
           plot(m_gam_ar_12)) # values at lag 12 are smaller, but lag 1 is larger
 
 #' how does `{mvgam}` handle many missing data?
@@ -257,8 +255,7 @@ data_train_missing <- data_train %>%
                               passengers))
 
 m_gam_ar_missing <-
-  mvgam(formula = passengers ~ 0,
-        trend_formula = ~
+  mvgam(formula = passengers ~
           s(year, k = 9, bs = "tp") +
           s(month, k = 10, bs = "cc"),
         trend_model = AR(p = 1),
@@ -269,7 +266,6 @@ m_gam_ar_missing <-
         chains = 4,
         burnin = 750,
         samples = 500,
-        control = list(max_treedepth = 20, adapt_delta = 0.95),
         parallel = TRUE, silent = 2)
 
 plot(m_gam_ar_missing, type = "forecast")
@@ -390,8 +386,7 @@ pigments_car <- pigments %>%
 
 #' `AR(1)` fails because sampling is irregular in v. 1.1.594
 if(FALSE) {
-  m_diatox_ar <- mvgam(formula = diatox ~ 0,
-                       trend_formula = ~ s(year, k = 30),
+  m_diatox_ar <- mvgam(formula = diatox ~ s(year, k = 30),
                        trend_model = AR(),
                        family = Gamma(link = "log"),
                        data = pigments_car,
@@ -404,16 +399,16 @@ if(FALSE) {
 }
 
 #' fit a model with a continuous `AR(1)`
-m_diatox_car <- mvgam(formula = diatox ~ 0,
-                      trend_formula = ~ s(year, k = 20),
+m_diatox_car <- mvgam(formula = diatox ~ s(year, k = 10),
                       trend_model = CAR(),
+                      noncentred = TRUE,
                       family = Gamma(link = "log"),
                       data = pigments_car,
                       chains = 4,
                       burnin = 500,
-                      samples = 1000,
-                      parallel = TRUE,
-                      silent = 2)
+                      samples = 2000,
+                      control = list(max_treedepth = 20, adapt_delta = 0.95),
+                      parallel = TRUE)
 
 summary(m_diatox_car)
 mcmc_plot(m_diatox_car, type = "trace", variable = ".", regex = TRUE)
@@ -437,9 +432,9 @@ plot_grid(mcmc_plot(m_diatox_car, type = "intervals", variable = "ar1[1]"),
 # the adaptive spline allows the wiggliness to vary over the years
 ?mgcv::smooth.construct.ad.smooth.spec
 
-m_diatox_car_ad <- mvgam(formula = diatox ~ 0,
-                         trend_formula = ~ s(year, bs = "ad", k = 30),
+m_diatox_car_ad <- mvgam(formula = diatox ~ s(year, bs = "ad", k = 30),
                          trend_model = CAR(),
+                         noncentred = TRUE,
                          family = Gamma(link = "log"),
                          data = pigments_car,
                          chains = 4,
@@ -458,7 +453,7 @@ plot(hindcast(m_diatox_car_ad))  # predictions with data points
 #' time is wrong; should be fixed in version 2.0 of `{mvgam}` later this year
 plot(m_diatox_car_ad, type = "forecast")  # predictions with data points
 
-# CAR(1) coefficient estimate is about the same, but the posterior's much wider
+# adaptive smooth allows to attribute more change to the smooth and less to AR
 plot_grid(mcmc_plot(m_diatox_car, type = "intervals", variable = "ar1[1]") +
             xlim(c(0, 1)) +
             ggtitle("Thin plate regression spline"),
