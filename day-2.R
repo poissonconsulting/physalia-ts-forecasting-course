@@ -185,7 +185,8 @@ plot(m_gam_month)
 # - https://nicholasjclark.github.io/mvgam/articles/trend_formulas.html
 
 # fit a GAM with an AR(1) process
-m_gam_ar <- mvgam(formula = passengers ~
+m_gam_ar <- mvgam(formula = passengers ~ 0,
+                  trend_formula = ~
                     s(year, k = 9, bs = "tp") +
                     s(month, k = 10, bs = "cc"),
                   trend_model = AR(p = 1), # AR(1) model
@@ -197,8 +198,8 @@ m_gam_ar <- mvgam(formula = passengers ~
                   chains = 4,
                   burnin = 750,
                   samples = 500,
-                  control = list(max_treedepth = 20, adapt_delta = 0.95),
-                  parallel = TRUE)
+                  parallel = TRUE,
+                  silent = 2)
 
 #' the `m_gam_ar` model is:
 #' `passengers ∼ Poisson(λ_t)`           # observation
