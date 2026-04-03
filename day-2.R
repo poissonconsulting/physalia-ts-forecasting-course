@@ -202,12 +202,12 @@ m_gam_ar <- mvgam(formula = passengers ~ 0,
                   silent = 2)
 
 #' the `m_gam_ar` model is:
-#' `passengers ∼ Poisson(λ_t)`           # observation
-#' `log(λ_t) ~ Normal(mu, S)`            # mean observation on log scale
-#' `mu = b_0 + s(year) + s(month) + z_t` # latent trend on log scale
-#' `z_t ∼ Normal(z_{t−1} * a, σ)`        # latent error variable
-#' `σ ∼ Exponential(2)`                  # SD of latent error variable
+#' `passengers ∼ Poisson(λ_t)`            # observation
+#' `log(λ_t) = l_t`                       # trend of mean obs on log scale
+#' `l_t = b_0 + s(year) + s(month) + z_t` # latent process trend varies w time
+#' `z_t ∼ Normal(l_{t−1} * a, σ)`         # latent error on log scale
 #' where `a` is the coefficient of the `AR(1)` process
+#' note: `log(λ_t) = l_t` implies mean observations are the true state
 
 summary(m_gam_ar) # diagnostics are ok
 
