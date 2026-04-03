@@ -74,6 +74,7 @@ m_gam <- mvgam(formula = passengers ~ s(dec_date, k = 30),
 # diagnostics look ok
 mcmc_plot(m_gam, type = "trace", variable = ".", regex = TRUE)
 summary(m_gam)
+plot(m_gam) # but there's clear unaccounted autocorrelation!
 
 # predictions for the test dataset are quite good
 plot(hindcast(m_gam))
@@ -100,6 +101,7 @@ m_gam_smooth <- mvgam(formula = passengers ~ s(dec_date, k = 10),
 plot(hindcast(m_gam_smooth))
 plot(m_gam_smooth, type = "forecast")
 draw(basis(m_gam_smooth$mgcv_model)) # simpler bases
+plot(m_gam_smooth) # autocorrelation is even worse
 
 #' we can improve the predictions somewhat by extending the basis, but this
 #' still depends on the model and the complexity of the trends...
@@ -167,7 +169,7 @@ layout(1)
 # assuming the seasonal cycle repeats across years allows us to reduce the
 # extrapolation to only be an extrapolation across years but not across months
 
-# autocorrelation present at lags 1 and 12
+# autocorrelation present at lags 1 and 12, but much better than previous models
 plot(m_gam_month)
 
 # SSMs separate true trend from obervation error by assuming that
@@ -292,13 +294,13 @@ plot_grid(
     geom_point(aes(time, passengers), air_passengers, shape = 4, size = 0.75) +
     geom_point(aes(time, passengers), data_train_missing, na.rm = TRUE)+
     ylim(c(0, 1e3)) +
-    ggtitle("Simple GAM"),
+    ggtitle("GAM with no latent trend model"),
   plot(forecast(m_gam_ar_missing)) +
     geom_point(aes(time, passengers), air_passengers, shape = 4, size = 0.75) +
     geom_point(aes(time, passengers), data_train_missing, na.rm = TRUE)+
     ylim(c(0, 1e3)) +
     ggtitle("AR GAM"),
-  ncol = 2)
+  ncol = 1)
 
 #' **break**
 
@@ -326,7 +328,7 @@ ggplot(pigments, aes(year, mid_depth_cm)) +
   geom_path() +
   xlab("Year CE") +
   scale_y_reverse("Sample depth (cm)") +
-  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf,
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, lwd = 2,
            arrow = arrow(length = unit(0.5, "cm"), ends = "last",
                          type = "closed"), color = "darkorange") +
   # Prevents clipping so left side of arrow is visible
@@ -410,13 +412,22 @@ m_diatox_car <- mvgam(formula = diatox ~ s(year, k = 10),
                       control = list(max_treedepth = 20, adapt_delta = 0.95),
                       parallel = TRUE)
 
-summary(m_diatox_car)
-mcmc_plot(m_diatox_car, type = "trace", variable = ".", regex = TRUE)
+plot(m_diatox_car, type = "residuals") # diagnostics look great
+summary(m_diatox_car) # summary looks good
+mcmc_plot(m_diatox_car, type = "trace", variable = ".", regex = TRUE) # good
 
-plot(m_diatox_car, type = "residuals") # residuals from the model
 plot_predictions(m_diatox_car, "year") # smooth term of year
 plot(hindcast(m_diatox_car)) # predictions with data points
 plot(m_diatox_car, type = "forecast") #' predictions w data points: *bad x axis*
+
+# posterior predictive checks
+pp_check(m_diatox_car, "dens_overlay")
+pp_check(m_diatox_car, 'ecdf_overlay')
+pp_check(m_diatox_car, "intervals")
+pp_check(m_diatox_car, 'error_scatter_avg')
+pp_check(m_diatox_car, "scatter_avg")
+pp_check(m_diatox_car, 'resid_ribbon')
+pp_check(m_diatox_car, 'ribbon')
 
 # why is the term so smooth and uncertain?
 # we can get a clue by looking at the posterior for the CAR(1) coefficient:
@@ -464,6 +475,7 @@ plot_grid(mcmc_plot(m_diatox_car, type = "intervals", variable = "ar1[1]") +
 
 #' `s(year)` coefficients clearly show how the coefficients affect the basis
 #' the `rho` coefficients are the smoothness coefficients
+mcmc_plot(m_diatox_car, type = "intervals", variable = ".", regex = TRUE)
 mcmc_plot(m_diatox_car_ad, type = "intervals", variable = ".", regex = TRUE)
 
 # get methods quickly with citations (you need to add the model terms)
@@ -494,6 +506,7 @@ pigments %>%
   ggplot(aes(distance, cov)) +
   geom_point(size = 2.5) +
   geom_point(aes(color = sqrt(n))) +
+  geom_smooth(method = "gam", formula = y ~ s(x, k = 20, bs = "ad")) +
   labs(x = "Distance (years)",
        y = expression(bold(Covariance~ "(nmol"^"2"~g^{"-2"}~"C)"))) +
   scale_color_viridis_c(name = "n", labels = \(x) x^2)
@@ -522,16 +535,19 @@ tibble(distance = 1:75,
 #' of random effects
 ggplot(pigments, aes(round(year / 50) * 50, diatox)) +
   geom_point(alpha = 0.75) +
+  stat_summary(fun = "mean", geom = "point", col = 'darkorange', size = 2) +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs", k = 5)) +
   labs(x = "Year CE", y = lab_diatox)
 
 ggplot(pigments, aes(round(year / 20) * 20, diatox)) +
   geom_point(alpha = 0.75) +
+  stat_summary(fun = "mean", geom = "point", col = 'darkorange', size = 2) +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs", k = 10)) +
   labs(x = "Year CE", y = lab_diatox)
 
 ggplot(pigments, aes(round(year, -1), diatox)) +
   geom_point(alpha = 0.75) +
+  stat_summary(fun = "mean", geom = "point", col = 'darkorange', size = 2) +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs", k = 20)) +
   labs(x = "Year CE", y = lab_diatox)
 
