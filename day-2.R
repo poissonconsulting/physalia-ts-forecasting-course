@@ -713,7 +713,7 @@ expand_grid(
   theme(legend.position = "top")
 
 #' allow the effect of `percent_n` to vary smoothly
-m_diatox_pn <- mvgam(formula = diatox ~
+m_diatox_pn_ti <- mvgam(formula = diatox ~
                        gp(year, c = 5/4, k = 30, gr = FALSE, scale = FALSE) +
                        s(percent_n, k = 5, bs = "tp") +
                        ti(year, percent_n, k = c(10, 5), bs = c("gp", "tp")),
