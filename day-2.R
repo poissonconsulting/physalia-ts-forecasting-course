@@ -786,6 +786,5 @@ expand_grid(
 #' dynamic coefficient models in `{mgcv}`
 #' in `{mgcv}`, you can fit the term using `s(year, by = percent_n)`, or, more
 #' specifically `s(year, by = percent_n, bs = "gp")`
+m_diatox_pn$mgcv_model
 #' in `{brms}`, you can also fit the term using `gp(year, by = percent_n, ...)`
-
-m_diatox_pn$mgcv_model #' `{mvgam}` v.1.1.594 uses tp basis
