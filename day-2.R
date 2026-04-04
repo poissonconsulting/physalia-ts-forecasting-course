@@ -410,6 +410,22 @@ m_diatox_car <- mvgam(diatox ~ s(year, k = 10),
                       samples = 500,
                       control = list(adapt_delta = 0.95),
                       parallel = TRUE)
+#' the model is:
+#' `diatox ∼ Gamma(mu_t, theta)`        # observation
+#' `log(mu_t) = s(year) + l_t`          # trend of mean obs on log scale
+#' `l_t = z_t`                          # latent process trend varies w time
+#' `z_t ∼ Normal(z_{t−dt} * a^{dt}, σ)` # latent stochastic component
+#' where `a < 1` is the coef of the `CAR(1)` process for time difference `dt`
+#' note: `log(λ_t) = l_t` implies mean observations are the true state
+#' 
+#' note: when `dt = 1`, the model becomes a simple `AR(1)` process:
+#' `E(z_t) = z_{t−dt} * a^{dt} = z_{t−1} * a^1 = z_{t−1} * a`
+#' 
+#' note: when `dt = 0`, `z_t` becomes equal to itself:
+#' `E(z_t) = z_{t−dt} * a^{dt} = z_{t-0} * a^0 = z_{t} * 1`
+#' 
+#' note: as `dt` becomes large, `z_t` becomes independent from `z_{t-dt}`
+#' `E(z_t) = z_{t−dt} * a^{Inf} = z_{t-dt} * 0 = z_{t−1} * 0`
 
 plot(m_diatox_car, type = "residuals") # diagnostics look great
 summary(m_diatox_car) # summary looks good
