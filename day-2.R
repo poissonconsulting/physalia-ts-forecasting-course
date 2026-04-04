@@ -399,33 +399,9 @@ draw(m_diatox_0$mgcv_model, n = 200)
 plot(m_diatox_0, type = "forecast")
 
 #' add a `CAR(1)` term to account for continuous-time autocorrelation
-#' add a column of time for the `CAR(1)` process
-#' use `CAR(1)` if times are not integers
-#' using `CAR(1)` because `AR(1)` fails if there are NAs in the response and
-#' requires a consecutive series of `time` values
-pigments_car <- pigments %>%
-  #' *adding missing times causes errors with calculated residuals*
-  # right_join(tibble(year = seq(min(.$year), max(.$year), by = 1)),
-  #            by = "year") %>%
-  mutate(time = year)
-
-#' `AR(1)` fails because sampling is irregular in v. 1.1.594
-if(FALSE) {
-  m_diatox_ar <- mvgam(formula = diatox ~ s(year, k = 30),
-                       trend_model = AR(),
-                       family = Gamma(link = "log"),
-                       data = pigments_car,
-                       chains = 4,
-                       burnin = 750,
-                       samples = 500,
-                       control = list(max_treedepth = 20, adapt_delta = 0.9),
-                       parallel = TRUE,
-                       silent = 2)
-}
-
-#' fit a model with a continuous `AR(1)`
-m_diatox_car <- mvgam(formula = diatox ~ s(year, k = 10),
-                      trend_model = CAR(),
+#' `AR(1)` but not `CAR(1)` fails if time is irregular in `{mvgam}` v.1.1.594
+m_diatox_car <- mvgam(diatox ~ s(year, k = 10),
+                      trend_model = CAR(1),
                       noncentred = TRUE,
                       family = Gamma(link = "log"),
                       data = pigments,
