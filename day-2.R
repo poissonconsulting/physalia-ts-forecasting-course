@@ -447,6 +447,7 @@ pp_check(m_diatox_car, "resid_ribbon") # residuals are uncorrelated after CAR(1)
 
 # why is the term so smooth and uncertain?
 # we can get a clue by looking at the posterior for the CAR(1) coefficient:
+#' the model attributes the spike to the `CAR(1)` process instead of `s(year)`
 plot_grid(mcmc_plot(m_diatox_car, type = "intervals", variable = "ar1[1]"),
           plot_predictions(m_diatox_car, "year")) # smooth term of year
 
@@ -477,10 +478,10 @@ mcmc_plot(m_diatox_car_ad, type = "trace", variable = ".", regex = TRUE)
 plot(m_diatox_car_ad, type = "residuals") # residuals from the model
 plot_predictions(m_diatox_car_ad, "year") # smooth term of year
 plot(hindcast(m_diatox_car_ad))  # predictions with data points
-#' time is wrong; should be fixed in version 2.0 of `{mvgam}` later this year
+#' time axis is wrong if missing years are not present in the dataset as `NA`
 plot(m_diatox_car_ad, type = "forecast")  # predictions with data points
 
-# adaptive smooth allows to attribute more change to the smooth and less to AR
+# adaptive smooth allows to attribute more change to the smooth and less to CAR
 plot_grid(mcmc_plot(m_diatox_car, type = "intervals", variable = "ar1[1]") +
             xlim(c(0, 1)) +
             ggtitle("Thin plate regression spline"),
