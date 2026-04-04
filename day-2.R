@@ -331,7 +331,15 @@ pigments <- read.xlsx("https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/head
             .by = year) %>%
   arrange(year) %>%
   mutate(interval = year - lag(year),
-         series = factor("core 1"))
+         series = factor("core 1")) %>%
+  #' add a column of time for the `CAR(1)` process
+  #' can use `CAR(1)` if times are not integers (equivalent otherwise)
+  #' requires a consecutive series of `time` values
+  right_join(tibble(year = seq(min(.$year), max(.$year), by = 1)),
+             by = "year") %>%
+  mutate(time = year,
+         series = factor("core 1")) %>%
+  arrange(time)
 
 # sediment age decreases nonlinearly with sample depth
 ggplot(pigments, aes(year, mid_depth_cm)) +
@@ -420,11 +428,11 @@ m_diatox_car <- mvgam(formula = diatox ~ s(year, k = 10),
                       trend_model = CAR(),
                       noncentred = TRUE,
                       family = Gamma(link = "log"),
-                      data = pigments_car,
+                      data = pigments,
                       chains = 4,
                       burnin = 500,
-                      samples = 2000,
-                      control = list(max_treedepth = 20, adapt_delta = 0.95),
+                      samples = 500,
+                      control = list(adapt_delta = 0.95),
                       parallel = TRUE)
 
 plot(m_diatox_car, type = "residuals") # diagnostics look great
