@@ -431,18 +431,19 @@ plot(m_diatox_car, type = "residuals") # diagnostics look great
 summary(m_diatox_car) # summary looks good
 mcmc_plot(m_diatox_car, type = "trace", variable = ".", regex = TRUE) # good
 
-plot_predictions(m_diatox_car, "year") # smooth term of year
-plot(hindcast(m_diatox_car)) # predictions with data points
-plot(m_diatox_car, type = "forecast") #' predictions w data points: *bad x axis*
+plot_predictions(m_diatox_car, "year") #' `s(year)` is very smooth...
+plot(hindcast(m_diatox_car)) # predictions with data points are not smooth...
+plot(m_diatox_car, type = "forecast") # identical since no missing future data
+#' *NOTE:* `plot(type = "forecast")` will have a bad x axis if times are missing
 
-# posterior predictive checks
-pp_check(m_diatox_car, "dens_overlay")
-pp_check(m_diatox_car, 'ecdf_overlay')
-pp_check(m_diatox_car, "intervals")
-pp_check(m_diatox_car, 'error_scatter_avg')
-pp_check(m_diatox_car, "scatter_avg")
-pp_check(m_diatox_car, 'resid_ribbon')
-pp_check(m_diatox_car, 'ribbon')
+# posterior predictive checks: very high uncertainty
+pp_check(m_diatox_car, "dens_overlay", ndraws = 100)
+pp_check(m_diatox_car, "ecdf_overlay", ndraws = 100)
+pp_check(m_diatox_car, "intervals") # misses the spike entirely
+pp_check(m_diatox_car, "ribbon")
+pp_check(m_diatox_car, "error_scatter_avg") # error is proportional to y
+pp_check(m_diatox_car, "scatter_avg") # spike is clearly visible
+pp_check(m_diatox_car, "resid_ribbon") # residuals are uncorrelated after CAR(1)
 
 # why is the term so smooth and uncertain?
 # we can get a clue by looking at the posterior for the CAR(1) coefficient:
