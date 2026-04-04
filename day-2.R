@@ -463,7 +463,7 @@ m_diatox_car_ad <- mvgam(formula = diatox ~ s(year, bs = "ad", k = 30),
                          trend_model = CAR(),
                          noncentred = TRUE,
                          family = Gamma(link = "log"),
-                         data = pigments_car,
+                         data = pigments,
                          chains = 4,
                          burnin = 500,
                          samples = 1500,
@@ -514,7 +514,7 @@ pigments %>%
   unnest(data_2) %>%
   filter(row_2 >= row) %>% # drop duplicate pairs (e.g., (2, 1) but not (1, 2))
   mutate(distance = abs(year - year_2)) %>%
-  summarise(cov = var(diatox, diatox_2),
+  summarise(cov = var(diatox, diatox_2, na.rm = TRUE),
             #cov = cov(diatox, diatox_2),
             n = n(),
             .by = distance) %>%
@@ -533,10 +533,14 @@ tibble(distance = 1:75,
   unnest(dat) %>%
   mutate(diatox_2 = map2_dbl(distance, year, \(.d, .y) {
     value <- filter(pigments, year == .y + .d)$diatox
-    if(length(value) > 0) return(mean(value)) else return(NA_real_)
+    if(length(value) > 0) {
+      return(mean(value, na.rm = TRUE))
+    } else {
+      return(NA_real_)
+    }
   })) %>%
   summarize(var = mean((diatox - diatox_2)^2, na.rm = TRUE),
-            n = sum(! is.na(diatox_2)),
+            n = sum(! (is.na(diatox_2) | is.na(diatox))),
             .by = distance) %>%
   ggplot(aes(distance, var)) +
   geom_point(size = 2.5) +
@@ -611,7 +615,7 @@ m_diatox_gp <- mvgam(formula = diatox ~
                           scale = FALSE), # do not divide distances by max
                      trend_model = CAR(),
                      family = Gamma(link = "log"),
-                     data = pigments_car,
+                     data = pigments,
                      chains = 4,
                      burnin = 500,
                      samples = 500,
@@ -652,7 +656,8 @@ m_diatox_pn <- mvgam(formula = diatox ~
                      trend_model = CAR(),
                      noncentred = TRUE, # helps avoid conflations between terms
                      family = Gamma(link = "log"),
-                     data = pigments_car,
+                     #' fails if there are missing `percent_n` values
+                     data = filter(pigments, ! is.na(percent_n)),
                      chains = 4,
                      burnin = 500,
                      samples = 500,
@@ -665,7 +670,7 @@ plot_predictions(m_diatox_pn, "percent_n", type = "expected")
 
 expand_grid(percent_n = c(0.4, 0.6, 0.8),
             time = gratia:::seq_min_max(pigments$year, n = 400),
-            series = unique(pigments_car$series)) %>%
+            series = unique(pigments$series)) %>%
   #' using `predictions()` with `{mvgam}` v. 1.1.594 results in the error:
   #' Error:
   #' ! Unable to compute predicted values with this model. This error can arise
@@ -695,7 +700,7 @@ expand_grid(percent_n = c(0.4, 0.6, 0.8),
 expand_grid(
   percent_n = gratia:::seq_min_max(pigments$percent_n, n = 100),
   year = gratia:::seq_min_max(pigments$year, n = 5),
-  series = unique(pigments_car$series)) %>%
+  series = unique(pigments$series)) %>%
   mutate(time = year) %>%
   bind_cols(., predict(m_diatox_pn, newdata = ., type = "expected")) %>%
   ggplot(aes(percent_n, Estimate, group = year)) +
@@ -714,7 +719,7 @@ expand_grid(
 expand_grid(
   percent_n = gratia:::seq_min_max(pigments$percent_n, n = 100),
   year = gratia:::seq_min_max(pigments$year, n = 100),
-  series = unique(pigments_car$series)) %>%
+  series = unique(pigments$series)) %>%
   mutate(time = year) %>%
   bind_cols(., predict(m_diatox_pn, newdata = ., type = "expected")) %>%
   ggplot(aes(year, percent_n, fill = Estimate)) +
@@ -726,24 +731,24 @@ expand_grid(
 
 #' allow the effect of `percent_n` to vary smoothly
 m_diatox_pn_ti <- mvgam(formula = diatox ~
-                       gp(year, c = 5/4, k = 30, gr = FALSE, scale = FALSE) +
-                       s(percent_n, k = 5, bs = "tp") +
-                       ti(year, percent_n, k = c(10, 5), bs = c("gp", "tp")),
-                     trend_model = CAR(),
-                     noncentred = TRUE, # helps avoid conflations between terms
-                     family = Gamma(link = "log"),
-                     data = pigments_car,
-                     chains = 4,
-                     burnin = 500,
-                     samples = 500,
-                     parallel = TRUE,
-                     silent = 2)
+                          gp(year, c = 5/4, k = 30, gr = FALSE, scale = FALSE) +
+                          s(percent_n, k = 5, bs = "tp") +
+                          ti(year, percent_n, k = c(10, 5), bs = c("gp", "tp")),
+                        trend_model = CAR(),
+                        noncentred = TRUE, # helps avoid conflations between terms
+                        family = Gamma(link = "log"),
+                        data = filter(pigments, ! is.na(percent_n)),
+                        chains = 4,
+                        burnin = 500,
+                        samples = 500,
+                        parallel = TRUE,
+                        silent = 2)
 
 # diatox vs % N
 expand_grid(
   percent_n = gratia:::seq_min_max(pigments$percent_n, n = 100),
   year = gratia:::seq_min_max(pigments$year, n = 5),
-  series = unique(pigments_car$series)) %>%
+  series = unique(pigments$series)) %>%
   mutate(time = year) %>%
   bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = "expected")) %>%
   ggplot(aes(percent_n, Estimate, group = year)) +
@@ -762,7 +767,7 @@ expand_grid(
 expand_grid(
   percent_n = gratia:::seq_min_max(pigments$percent_n, n = 3),
   year = gratia:::seq_min_max(pigments$year, n = 400),
-  series = unique(pigments_car$series)) %>%
+  series = unique(pigments$series)) %>%
   mutate(time = year) %>%
   bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = "expected")) %>%
   ggplot(aes(year, Estimate, group = percent_n)) +
@@ -785,7 +790,7 @@ expand_grid(
 expand_grid(
   percent_n = gratia:::seq_min_max(pigments$percent_n, n = 100),
   year = gratia:::seq_min_max(pigments$year, n = 100),
-  series = unique(pigments_car$series)) %>%
+  series = unique(pigments$series)) %>%
   mutate(time = year) %>%
   bind_cols(., predict(m_diatox_pn_ti, newdata = ., type = "expected")) %>%
   ggplot(aes(year, percent_n, fill = Estimate)) +
