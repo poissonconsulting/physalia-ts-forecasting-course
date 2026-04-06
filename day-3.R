@@ -43,7 +43,9 @@ m_gam <- mvgam(formula = passengers ~ 0, # no error in observation process
                chains = 4,
                burnin = 750,
                samples = 500,
-               parallel = TRUE, silent = 2)
+               control = list(max_treedepth = 20, adapt_delta = 0.9),
+               parallel = TRUE,
+               silent = 2)
 
 summary(m_gam) # check diagnostics
 plot(m_gam)
@@ -74,7 +76,7 @@ m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
                   newdata = data_test, # calculate forecast while fitting
                   chains = 4,
                   burnin = 750,
-                  samples = 500,
+                  samples = 1000,
                   control = list(max_treedepth = 20, adapt_delta = 0.95),
                   parallel = TRUE, silent = 2)
 
