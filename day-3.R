@@ -421,7 +421,7 @@ ggplot() +
 
 # Continuous Ranked Probability Score
 # "-1" forces a flip in the pdf, making the observation the MLE value
-if (FALSE) {
+if (FALSE) { # do not run: for illustration purposes only
   if_else(est < y,
           integrate(f = (pnorm(est)    )^2, lower = -Inf, upper = Inf),
           integrate(f = (pnorm(est) - 1)^2, lower = -Inf, upper = Inf))
@@ -430,7 +430,7 @@ if (FALSE) {
 
 # Discrete Ranked Probability Score (CRPS for discrete random variables)
 # "-1" forces a flip in the pdf, making the observation the MLE value
-if (FALSE) {
+if (FALSE) { # do not run: for illustration purposes only
   if_else(est < y,
           sum(f = (ppois(est)    )^2, lower = 0, upper = Inf),
           sum(f = (ppois(est) - 1)^2, lower = 0, upper = Inf))
