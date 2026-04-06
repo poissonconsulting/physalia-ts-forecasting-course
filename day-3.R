@@ -35,7 +35,7 @@ m_gam <- mvgam(formula = passengers ~ 0, # no error in observation process
                  s(year, k = 5, bs = "tp") +
                  s(month, k = 10, bs = "cc"),
                trend_model = "None",
-               noncentred = TRUE, # use a noncentered AR(1) model
+               noncentred = TRUE,
                knots = list(month = c(0.5, 12.5)),
                family = poisson(link = "log"),
                data = data_train,
