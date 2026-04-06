@@ -190,22 +190,22 @@ plot_preds <- function(.d, scale){
 # on link scale: for understanding coefficients of the linear predictor
 predict(m_gam_ar, type = "link") %>% #' = `brms::posterior_linpred()`
   plot_preds(scale = "link") +
-  ylim(c(0, 400))
+  ylim(c(0, 410))
 
 # on expected scale: for understanding effects on the mean response
 predict(m_gam_ar, type = "expected") %>% #' = `brms::posterior_epred()`
   plot_preds(scale = "expected") +
-  ylim(c(0, 400))
+  ylim(c(0, 410))
 
 # on response scale: for understanding effects on the individual observations
 predict(m_gam_ar, type = "response") %>% #' = `brms::posterior_predict()`
   plot_preds(scale = "response") +
-  ylim(c(0, 400))
+  ylim(c(0, 410))
 
 #' can include process error with `process_error = TRUE`
 predict(m_gam_ar, type = "response", process_error = TRUE) %>%
   plot_preds(scale = "response") +
-  ylim(c(0, 400))
+  ylim(c(0, 410))
 
 # example with count data:
 # - link: values are all real numbers (+ or -); scale is additive
