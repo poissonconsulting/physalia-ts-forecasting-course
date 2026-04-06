@@ -118,21 +118,17 @@ plot(forecast(m_gam_ar)) # with ggplot2
 plot(forecast(m_gam_ar), realisations = TRUE) # CIs = summaries of realizations
 
 # random draws from the posterior (NOTE: x axis is time since first observation)
-plot(m_gam_ar, type = "forecast", realisations = TRUE, n_realisations = 10) +
-  geom_vline(xintercept = nrow(data_train), lty = "dashed")
+plot(m_gam_ar, type = "forecast", realisations = TRUE, n_realisations = 10)
 plot(m_gam_ar, type = "trend", realisations = TRUE, n_realisations = 10) +
   geom_vline(xintercept = nrow(data_train), lty = "dashed")
 plot(m_gam_ar, type = "smooths", realisations = TRUE, n_realisations = 10,
-     trend_effects = TRUE) +
-  geom_vline(xintercept = nrow(data_train), lty = "dashed")
+     trend_effects = TRUE)
 
 # draws summarized to credible intervals (NOTE: x axis is time since first obs)
-plot(m_gam_ar, type = "forecast") +
-  geom_vline(xintercept = nrow(data_train), lty = "dashed")
+plot(m_gam_ar, type = "forecast")
 plot(m_gam_ar, type = "trend") +
   geom_vline(xintercept = nrow(data_train), lty = "dashed")
-plot(m_gam_ar, type = "smooths", trend_effects = TRUE) +
-  geom_vline(xintercept = nrow(data_train), lty = "dashed")
+plot(m_gam_ar, type = "smooths", trend_effects = TRUE)
 
 # generate forecasts for up to and of 2026
 # predicting later is useful if data are not available or too large to add
