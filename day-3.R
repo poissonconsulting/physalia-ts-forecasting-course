@@ -64,6 +64,7 @@ m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
                     s(year, k = 5, bs = "tp") +
                     s(month, k = 10, bs = "cc"),
                   trend_model = AR(p = 1), # AR(1) model
+                  # adding bounds for AR(1) range to improve diagnostics
                   priors = prior(normal(0.4, 0.01), class = ar1,
                                  lb = 0.35, ub = 0.45),
                   noncentred = TRUE, # use a noncentered AR(1) model
