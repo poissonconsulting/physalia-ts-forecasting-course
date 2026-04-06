@@ -257,7 +257,7 @@ pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "median", binwidth = 2.5)
 pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "sd", binwidth = 2.5)
 pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "var", binwidth = 250)
 
-pp_check(m_gam_ar, type = "stat_2d", ndraws = 10, stat = c("median", "sd"))
+pp_check(m_gam_ar, type = "stat_2d", ndraws = 1000, stat = c("mean", "sd"))
 
 #' **break**
 
