@@ -281,20 +281,25 @@ m_bad <- mvgam(formula = passengers ~ 0,
                parallel = TRUE,
                silent = 2)
 
-plot(m_bad, type = "forecast")
+layout(matrix(c(1, 1:3), ncol = 2, byrow = TRUE))
+plot(m_bad, type = "forecast") # the forecast is an AR(1) around the mean
 plot(loo(m_bad), diagnostic = "k")
 plot(loo(m_bad), diagnostic = "ESS") #' same as `diagnostic = "n_eff"`
+# points closer to the estimated mean have better scores
+layout(1)
 
 # both models predict decently well for past data
 plot(hindcast(m_gam_ar)) / plot(hindcast(m_bad))
 
 # but they do not model the data the same way
-plot_predictions(m_gam_ar, by = "time") # GAM model "understands" the trends
-plot_predictions(m_bad, by = "time") # the AR model always assumes stationarity
+plot_predictions(m_gam_ar, by = "time") / # GAM model "understands" the trends
+  plot_predictions(m_bad, by = "time") # the AR model always assumes stationarity
 
 # the naive model forecasts quite badly (reverts to the long-term mean)
+layout(1:2)
 plot_mvgam_fc(m_bad)
 plot_mvgam_fc(m_gam_ar)
+layout(1)
 
 loo_compare(m_gam_ar, m_bad) #' `m_bad` is clearly much worse
 loo_compare(m_gam_ar, m_gam) #' `m_gam_ar` performs better: 12 / 1.6 = 7.5 SEs
