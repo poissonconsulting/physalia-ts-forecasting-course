@@ -159,12 +159,12 @@ for(i in which(is.na(preds_2026$passengers))) {
 preds_2026 <- rename(preds_2026, estimate = passengers)
 
 # model predicts that passengers will exceed 8 million by the end of 1972
-preds_2026
+print(preds_2026, n = 13) #' `lag_12_passengers` for row 13 is `estimate` for 1
 max(preds_2026$dec_date)
-plot_mvgam_fc(m_gam_ar, newdata = preds_2026, ylim = c(0, 8e6 / 1e3))
-abline(v = 200, lty = "dashed")
 plot_mvgam_fc(m_gam_ar, newdata = preds_2026, ylim = c(0, 8e6 / 1e3),
               realisations = TRUE)
+plot_mvgam_fc(m_gam_ar, newdata = preds_2026, ylim = c(0, 8e6 / 1e3))
+abline(v = 200, lty = "dashed")
 filter(preds_2026, time == 200)
 
 #' `plot(forecast(m_gam_ar, newdata = new_data))` fails with error:
