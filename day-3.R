@@ -118,11 +118,20 @@ plot(forecast(m_gam_ar)) # with ggplot2
 plot(forecast(m_gam_ar), realisations = TRUE) # CIs = summaries of realizations
 
 # random draws from the posterior (NOTE: x axis is time since first observation)
+plot(m_gam_ar, type = "forecast", realisations = TRUE, n_realisations = 10) +
+  geom_vline(xintercept = nrow(data_train), lty = "dashed")
 plot(m_gam_ar, type = "trend", realisations = TRUE, n_realisations = 10) +
+  geom_vline(xintercept = nrow(data_train), lty = "dashed")
+plot(m_gam_ar, type = "smooths", realisations = TRUE, n_realisations = 10,
+     trend_effects = TRUE) +
   geom_vline(xintercept = nrow(data_train), lty = "dashed")
 
 # draws summarized to credible intervals (NOTE: x axis is time since first obs)
+plot(m_gam_ar, type = "forecast") +
+  geom_vline(xintercept = nrow(data_train), lty = "dashed")
 plot(m_gam_ar, type = "trend") +
+  geom_vline(xintercept = nrow(data_train), lty = "dashed")
+plot(m_gam_ar, type = "smooths", trend_effects = TRUE) +
   geom_vline(xintercept = nrow(data_train), lty = "dashed")
 
 # generate forectasts for additional new data
