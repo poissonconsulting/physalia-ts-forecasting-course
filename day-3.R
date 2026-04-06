@@ -83,10 +83,14 @@ m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
 plot(m_gam_ar)
 summary(m_gam_ar) # check diagnostics
 
-# plot diagnostics (try without prior to see how bad it is without it)
+# plot diagnostics
+# one point is slightly problematic
+# not restricting the range of the AR(1) coef results in Pareto shapes > 5 due
+# to very low effective sample sizes as the AR(1) fights with the smooth terms
 layout(matrix(c(1, 1:3), ncol = 2, byrow = TRUE))
 plot(m_gam_ar, type = "forecast")
 plot(loo(m_gam_ar), diagnostic = "k")
+abline(v = 50, col = "grey", lty = "dashed")
 plot(loo(m_gam_ar), diagnostic = "ESS") #' same as `diagnostic = "n_eff"`
 layout(1)
 
