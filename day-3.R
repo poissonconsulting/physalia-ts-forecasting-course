@@ -134,7 +134,7 @@ plot(m_gam_ar, type = "trend") +
 plot(m_gam_ar, type = "smooths", trend_effects = TRUE) +
   geom_vline(xintercept = nrow(data_train), lty = "dashed")
 
-# generate forectasts for additional new data
+# generate forecasts for up to and of 2026
 # predicting later is useful if data are not available or too large to add
 data_test
 preds_2026 <- tibble(time = max(data_train$time) + 1:(12 * (2027 - 1963)),
@@ -155,7 +155,8 @@ for(i in which(is.na(preds_2026$passengers))) {
     predict(m_gam_ar, preds_2026[i, ], type = "expected")[, "Estimate"]
 }
 
-preds_2026 <- select(preds_2026, ! passengers) # to stop from calculating score
+# to stop from calculating score (since values are predicted)
+preds_2026 <- rename(preds_2026, estimate = passengers)
 
 # model predicts that passengers will exceed 8 million by the end of 1972
 preds_2026
