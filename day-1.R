@@ -507,24 +507,40 @@ ggplot() +
 
 #' when fitting the model, `cmdstanr` uses Hamiltonian Monte Carlo (HMC),
 #' specifically the No-U-Turn Sampler (NUTS). The method simulates a marble
-#' rolling up and down surfaces:
+#' rolling up and down surfaces of the *negative log likelihood* space by
+#' leveraging Hamiltonian dynamics (i.e., physics laws of movement and energy).
+#' 
 #' warmup phase:
-#' 1. sample a value from the prior distribution
-#' 2. take a small series of steps towards a new value, stopping if you start a
-#'    U-turn to avoid backtracking
-#' 3. calculate the likelihood for the starting point and the new candidate
-#' 4. accept the new candidate with probability based on a physics simulation
-#' 5. repeat steps 2-5 while optimizing the step length and `P(accpentance)`
+#' 0. choose a starting point based on the prior or the given initial values
+#' 1. "push the marble": sample a value from the momentum distribution, `N(0, M)`
+#' 2. take a series of steps based on the momentum, stopping if you make a
+#'    U-turn, to avoid backtracking and sampling inefficiently
+#' 3. calculate the likelihood at the starting point and the final point
+#' 4. with probability alpha, accept the new candidate if the ball has lower
+#'   -log(likelihood)
+#' 5. repeat steps 1-5 while optimizing step length and covariance matrix `M`
+#'    to achieve the target `P(acceptance)` for each warmup iteration
+#' 
 #' sampling phase:
-#' - repeat steps 2-5, but now store the values from each sample
+#' - using the optimized step length and covariance matrix, repeat steps 1-5,
+#'   but now store the values from each sample
 #' - since worse choices can still be chosen with some small probability,
 #'   the sampling process approximates the posterior distribution efficiently
-#' - preventing U-turns and optimizing `P(acceptance)` results in more efficient
-#'   sampling
+#' - using Hamiltonian dynamics and preventing U-turns results in more efficient
+#'   sampling than traditional MCMC sampling
+#'   
 #' additionally:
 #' - the target acceptance probability is the `adapt_delta` parameter
-#' - the number of steps per sample is limited by the `max_tree_depth` parameter
+#' - the number of steps per sample is limited by the `max_treedepth` parameter
 #' - numbers of samples are controlled by the `burnin` and `samples` arguments
+#' - `max_treedepth` is the max doubling of steps if no U-turns occur
+#' 
+#' for more info:
+#' - `https://arogozhnikov.github.io/2016/12/19/markov_chain_monte_carlo.html`
+#' - `https://discourse.mc-stan.org/t/the-role-of-max-treedepth-in-no-u-turn/24155/2`
+#' - `https://jwmi.github.io/BMB/18-Hamiltonian-Monte-Carlo-and-NUTS.pdf`
+#' - `https://arxiv.org/abs/1701.02434`
+#' - `https://mc-stan.org/learn-stan/diagnostics-warnings.html`
 
 # fitting a simple GLM (fits in < 1 second)
 m_temp <- mvgam(temp ~ doy,
