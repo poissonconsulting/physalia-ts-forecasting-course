@@ -613,7 +613,7 @@ m_temp_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
 #' each chain is one of the "paths" the model took to estimate the parameters
 #' the model will spend more time near the better parameter estimates and less
 #' near unlikely values, which estimates the posterior distribution.
-#' ideally, all chains should be similar and undistiguishable.
+#' ideally, all chains should be similar and indistinguishable.
 summary(m_temp_poly)
 mcmc_plot(m_temp_poly, type = "trace", variable = rownames(coef(m_temp_poly)))
 plot(m_temp_poly, type = "residuals") #' can also use `plot_mvgam_resids()`
