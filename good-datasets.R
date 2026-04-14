@@ -2,7 +2,7 @@ source('packages.R')
 
 # some useful datasets for examples or testing
 plot(Nile)
-layout(t(1:2))
+layout(1:2)
 acf(Nile)
 pacf(Nile)
 layout(1)
