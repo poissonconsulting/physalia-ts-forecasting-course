@@ -1,4 +1,3 @@
-# TODO: fix AR(1) coefficients to remove ELPD warnings
 source("packages.R") # attach necessary packages
 
 # multiple cores from the same lake: multiple time series for the same pigments
