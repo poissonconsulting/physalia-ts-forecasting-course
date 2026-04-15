@@ -77,24 +77,6 @@ ggplot(mapping = aes(year, diatox, color = core)) +
   scale_color_bright(name = "Core") +
   ylim(c(0, NA))
 
-# pareto k values are ok for individual models (0.8 < k < 1 isn't too bad)
-core_models <- map(paste("Core", 1:4), \(CORE) {
-  m_core <- mvgam(formula = diatox ~ s(year, bs = "tp"),
-                  family = Gamma(link = "log"),
-                  data = filter(d_train, core == CORE) %>% droplevels(),
-                  newdata = filter(d_test, core == CORE) %>% droplevels(),
-                  chains = 4,
-                  burnin = 500,
-                  sample = 750,
-                  parallel = TRUE,
-                  silent = 2)
-  m_core
-})
-
-layout(matrix(1:4, ncol = 2))
-for(i in 1:4) plot(loo(core_models[[i]]))
-layout(1)
-
 # fit a null model
 m_null <- mvgam(formula = diatox ~ core,
                 family = Gamma(link = "log"),
