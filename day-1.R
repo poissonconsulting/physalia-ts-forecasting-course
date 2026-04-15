@@ -763,6 +763,7 @@ m_temp_ar <- mvgam(formula = temp ~ s(doy, k = 10, bs = "cr"),
                    control = list(max_treedepth = 20, adapt_delta = 0.99))
 
 # chains are occasionally not well-mixed even if Rhat is near 1
+# there seem to be two alternative fits the model is tring to decide between
 mcmc_plot(m_temp_ar, type = "trace")
 # chains are not well mixed: conflicting coefficients
 mcmc_plot(m_temp_ar, type = "trace_highlight", highlight = 2)
