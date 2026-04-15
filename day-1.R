@@ -771,4 +771,13 @@ plot(m_temp_ar) # no appreciable correlations at any lags
 # uncertainty at greater lags is because of missing data
 
 # compare the autocorrelation to that of the previous model
-plot(m_temp)
+plot(m_temp_gam)
+
+# compare fits
+plot_mvgam_fc(m_temp_gam)
+
+# can't place plots in grids because they use a mix of ggplot and base plot
+# additionally, some plots functions don't return the plots (can't be assigned)
+plot_mvgam_fc(m_temp_ar)
+plot(m_temp_ar, type = "smooth")
+plot(m_temp_ar, type = "trend")
