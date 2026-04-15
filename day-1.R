@@ -678,7 +678,7 @@ m_temp_gam <- mvgam(temp ~ s(doy, k = 10, bs = "cr"),
                     #' tune parameters to improve sampling:
                     #' - `max_treedepth`: max n of binary choices when sampling
                     #' - `adapt_delta`: target average proposal acceptance prob. 
-                    control = list(max_treedepth = 20, adapt_delta = 0.95))
+                    control = list(max_treedepth = 10, adapt_delta = 0.99))
 
 #' `summary()` looks a bit different from the one for the GLM:
 #' - `s(doy)` has `k - 1` coefficients
@@ -760,7 +760,7 @@ m_temp_ar <- mvgam(formula = temp ~ s(doy, k = 10, bs = "cr"),
                    trend_model = AR(1),
                    family = gaussian(), data = d_temp_missing, noncentred = TRUE,
                    parallel = TRUE, burnin = 500, samples = 1000,
-                   control = list(max_treedepth = 20, adapt_delta = 0.99))
+                   control = list(adapt_delta = 0.99))
 
 # chains are occasionally not well-mixed even if Rhat is near 1
 # there seem to be two alternative fits the model is tring to decide between

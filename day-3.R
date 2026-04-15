@@ -43,7 +43,7 @@ m_gam <- mvgam(formula = passengers ~ 0, # no error in observation process
                chains = 4,
                burnin = 750,
                samples = 500,
-               control = list(max_treedepth = 20, adapt_delta = 0.9),
+               control = list(adapt_delta = 0.9),
                parallel = TRUE,
                silent = 2)
 
@@ -77,7 +77,7 @@ m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
                   chains = 4,
                   burnin = 750,
                   samples = 1000,
-                  control = list(max_treedepth = 20, adapt_delta = 0.95),
+                  control = list(adapt_delta = 0.95),
                   parallel = TRUE, silent = 2)
 
 plot(m_gam_ar)

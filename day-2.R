@@ -68,7 +68,7 @@ m_gam <- mvgam(formula = passengers ~ s(dec_date, k = 30),
                chains = 4,
                burnin = 500,
                samples = 500,
-               control = list(max_treedepth = 20, adapt_delta = 0.9),
+               control = list(max_treedepth = 12, adapt_delta = 0.9),
                parallel = TRUE)
 
 # diagnostics look ok
@@ -94,7 +94,7 @@ m_gam_smooth <- mvgam(formula = passengers ~ s(dec_date, k = 10),
                       chains = 4,
                       burnin = 500,
                       samples = 500,
-                      control = list(max_treedepth = 20, adapt_delta = 0.9),
+                      control = list(adapt_delta = 0.9),
                       parallel = TRUE,
                       silent = 2)
 
@@ -122,7 +122,7 @@ m_gam_bs <- mvgam(formula = passengers ~ s(dec_date, k = 50, bs = "bs",
                   chains = 4,
                   burnin = 500,
                   samples = 500,
-                  control = list(max_treedepth = 20, adapt_delta = 0.9),
+                  control = list(adapt_delta = 0.9),
                   parallel = TRUE)
 
 #' warnings indicate there are no data for a portion of the spline, as expected
@@ -154,7 +154,7 @@ m_gam_month <- mvgam(passengers ~
                      chains = 4,
                      burnin = 500,
                      samples = 500,
-                     control = list(max_treedepth = 20, adapt_delta = 0.9),
+                     control = list(adapt_delta = 0.9),
                      parallel = TRUE,
                      silent = 2)
 
@@ -248,7 +248,6 @@ m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
                      chains = 4,
                      burnin = 750,
                      samples = 500,
-                     control = list(max_treedepth = 20),
                      parallel = TRUE)
 
 summary(m_gam_ar_12)
@@ -472,7 +471,7 @@ m_diatox_car_ad <- mvgam(formula = diatox ~ s(year, bs = "ad", k = 30),
                          chains = 4,
                          burnin = 500,
                          samples = 1500,
-                         control = list(max_treedepth = 30, adapt_delta = 0.95),
+                         control = list(adapt_delta = 0.95),
                          parallel = TRUE,
                          silent = 2)
 
@@ -624,7 +623,7 @@ m_diatox_gp <- mvgam(formula = diatox ~
                      chains = 4,
                      burnin = 500,
                      samples = 500,
-                     control = list(max_treedepth = 20, adapt_delta = 0.95),
+                     control = list(adapt_delta = 0.95),
                      parallel = TRUE,
                      silent = 2)
 

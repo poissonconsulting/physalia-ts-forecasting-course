@@ -122,8 +122,7 @@ m_gam <- mvgam(formula = diatox ~ core + s(year, core, bs = "fs", k = 10),
                chains = 4,
                burnin = 500,
                samples = 750,
-               parallel = TRUE,
-               control = list(max_treedepth = 20))
+               parallel = TRUE)
 summary(m_gam) # no issues with diagnostics
 plot(m_gam) # clear autocorrelation at lag 1
 draw(m_gam$mgcv_model) # notice the small wiggles in the fs smooths
@@ -148,7 +147,6 @@ m_gam_ar1 <- mvgam(formula = diatox ~ s(year, core, bs = "fs", k = 10),
                    chains = 4,
                    burnin = 500,
                    sample = 750,
-                   control = list(max_treedepth = 20),
                    parallel = TRUE)
 
 summary(m_gam_ar1) # no issues with diagnostics
@@ -227,7 +225,7 @@ m_gam_var1 <- mvgam(formula = z_log ~ 0 + s(year, core, bs = "fs", k = 10),
                     chains = 4,
                     burnin = 200,
                     sample = 750,
-                    control = list(max_treedepth = 20, adapt_delta = 0.9),
+                    control = list(adapt_delta = 0.95),
                     parallel = TRUE)
 
 mcmc_plot(m_gam_var1, type = "trace", variable = ".", regex = TRUE)
@@ -295,7 +293,7 @@ m_df <- mvgam(formula = diatox ~ s(core, bs ="re"), # assume stationarity
               chains = 4,
               burnin = 500,
               sample = 750,
-              control = list(max_treedepth = 20, adapt_delta = 0.9),
+              control = list(adapt_delta = 0.95),
               parallel = TRUE)
 
 summary(m_df) # no issues with diagnostics
@@ -326,7 +324,7 @@ m_gam_df <- mvgam(formula = diatox ~ s(year, core, bs = "fs", k = 10),
                   chains = 4,
                   burnin = 500,
                   sample = 750,
-                  control = list(max_treedepth = 20, adapt_delta = 0.9),
+                  control = list(adapt_delta = 0.9),
                   parallel = TRUE)
 
 summary(m_gam_df) # no issues with diagnostics
