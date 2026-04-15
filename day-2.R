@@ -251,6 +251,7 @@ m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
                      parallel = TRUE)
 
 summary(m_gam_ar_12)
+mcmc_plot(m_gam_ar_12, type = "trace", variable = ".", regex = TRUE)
 coef(m_gam_ar_12$trend_mgcv_model)["log(lag_12_passengers)"]
 plot_grid(plot(m_gam_ar), # see values at lag 12 for ACF and pACF
           plot(m_gam_ar_12)) # values at lag 12 are smaller, but lag 1 is larger
