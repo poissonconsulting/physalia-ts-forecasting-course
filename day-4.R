@@ -120,7 +120,6 @@ plot_grid(plot(forecast(m_gam), series = 1),
 
 # add AR(1) process
 m_gam_ar1 <- mvgam(formula = diatox ~ s(year, core, bs = "fs", k = 10),
-                   trend_formula = ~ core, # one trend model for each core
                    trend_model = AR(1), # autoregressive 1 process
                    noncentred = TRUE,
                    family = Gamma(link = "log"),
