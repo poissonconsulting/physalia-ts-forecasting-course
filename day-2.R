@@ -98,6 +98,8 @@ m_gam_smooth <- mvgam(formula = passengers ~ s(dec_date, k = 10),
                       parallel = TRUE,
                       silent = 2)
 
+summary(m_gam_smooth)
+
 # predictions are better, but the model is missing the seasonality
 plot(hindcast(m_gam_smooth))
 plot(m_gam_smooth, type = "forecast")
@@ -126,6 +128,8 @@ m_gam_bs <- mvgam(formula = passengers ~ s(dec_date, k = 50, bs = "bs",
 #' warnings indicate there are no data for a portion of the spline, as expected
 draw(basis(m_gam_bs$mgcv_model, data = air_passengers)) +  # model bases
   geom_rug(aes(dec_date), data_train, inherit.aes = FALSE) # rug plot of data
+
+summary(m_gam_bs)
 
 # forecasts for the test data are better, but still not good
 # the model doesn't know there are seasonal cycles. it only understands that
