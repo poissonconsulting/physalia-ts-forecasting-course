@@ -277,7 +277,7 @@ m_df <- mvgam(formula = diatox ~ s(core, bs ="re"), # assume stationarity
               control = list(adapt_delta = 0.95),
               parallel = TRUE)
 
-summary(m_df) # no issues with diagnostics
+summary(m_df) #' convergence issues REs and `ar1` coefs
 plot(m_df) # strong but uncertain autocorrelation at lag 1
 m_df$mgcv_model # there is no mgcv model now (other than intercepts)
 
@@ -294,7 +294,7 @@ plot_grid(plot(forecast(m_df), series = 1),
           plot(forecast(m_df), series = 3),
           plot(forecast(m_df), series = 4))
 
-# add a GAM term
+# add a GAM term (fits faster because it converges better)
 m_gam_df <- mvgam(formula = diatox ~ s(year, core, bs = "fs", k = 10),
                   use_lv = TRUE, n_lv = 4,
                   trend_model = AR(1),
