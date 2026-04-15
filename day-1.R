@@ -531,9 +531,9 @@ ggplot() +
 #'   
 #' additionally:
 #' - the target acceptance probability is the `adapt_delta` parameter
-#' - the number of steps per sample is limited by the `max_treedepth` parameter
+#' - the number of steps per sample is limited by the `max_treedepth` parameter,
+#'   which is the max doubling of steps if no U-turns occur
 #' - numbers of samples are controlled by the `burnin` and `samples` arguments
-#' - `max_treedepth` is the max doubling of steps if no U-turns occur
 #' 
 #' for more info:
 #' - `https://arogozhnikov.github.io/2016/12/19/markov_chain_monte_carlo.html`
