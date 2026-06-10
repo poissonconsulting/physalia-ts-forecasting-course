@@ -21,7 +21,7 @@ d_temp
 p_temp <-
   ggplot(d_temp, aes(date, temp)) +
   geom_point(alpha = 0.75) +
-  labs(x = NULL, y = expression(bold(paste("Temperature (\U00B0", "C)"))))
+  labs(x = NULL, y = expression(bold(paste("Temperature (\U00B0", "F)"))))
 p_temp
 
 # plot the data with a smooth model
@@ -245,6 +245,7 @@ plot_process(ar = 0, ma = 0) # white noise
 # AR processes: stationary if coefficients sum to < 1
 plot_process(ar = c(0.7, 0.2)) # stationary since 0.7 + 0.2 < 1
 plot_process(ar = c(0.7, 0.6)) # non-stationary since 0.7 + 0.6 > 1
+plot_process(ar = -c(0.7, 0.6)) # stationary since -0.7 - 0.6 < 1
 plot_process(ar = c(0.5, 0.4, 0.3)) # non-stationary since sum > 1
 plot_process(ar = c(0.4, 0.3, 0.2, 0.0999)) # stationary since sum < 1
 plot_process(ar = c(0.4, 0.3, 0.2, 0.0999), n = 1e5) # stationary since sum < 1
@@ -265,7 +266,7 @@ pacf(d_temp$temp) #' correl. between pairs, without previous lags' effects
 # ACF decays smoothly; high pacf value at lag 1, other values are small
 # AR(1) model is a good start
 
-#' `y_t = 0.82 * y_{t-1} + 77.33`
+#' `y_t = 77.33 + 0.82 * (y_{t-1} - 77.33) + e_t`
 m_ar_temp <- arima(d_temp$temp, order = c(1, 0, 0))
 coef(m_ar_temp)
 acf(resid(m_ar_temp)); pacf(resid(m_ar_temp)) # residuals are ok
@@ -431,7 +432,7 @@ d_track %>%
 # fitting models with `{mvgam}` ----
 ggplot(d_temp, aes(date, temp)) +
   geom_point(alpha = 0.75) +
-  labs(x = NULL, y = expression(bold(paste("Temperature (\U00B0", "C)"))))
+  labs(x = NULL, y = expression(bold(paste("Temperature (\U00B0", "F)"))))
 
 #' how models are fit in `{mvgam}`: a quick intro to Bayesian modeling
 #' - Bayesians view knowledge as a constantly updating set of information
@@ -440,7 +441,7 @@ ggplot(d_temp, aes(date, temp)) +
 #'   that specific dataset and model
 #' - we can then update our prior knowledge state with the new data to produce a
 #'   *posterior* knowledge state
-#' - choose distributions that include sensible parameters; prevent impossible
+#' - choose priors that include sensible parameters; prevent impossible
 #'   parameter values, but don't force a specific hypothesis. for more info:
 #' ..- `https://doi.org/10.3390/e19100555`
 #' ..- `https://www.youtube.com/watch?v=ztbYkBPDOgU`
@@ -511,7 +512,7 @@ ggplot() +
 #' leveraging Hamiltonian dynamics (i.e., physics laws of movement and energy).
 #' 
 #' warmup phase:
-#' 0. choose a starting point based on the prior or the given initial values
+#' 0. choose a starting point based **FIX THIS** or the given initial values
 #' 1. "push the marble": sample a value from the momentum distribution, `N(0, M)`
 #' 2. take a series of steps based on the momentum, stopping if you make a
 #'    U-turn, to avoid backtracking and sampling inefficiently
@@ -524,7 +525,7 @@ ggplot() +
 #' sampling phase:
 #' - using the optimized step length and covariance matrix, repeat steps 1-5,
 #'   but now store the values from each sample
-#' - since worse choices can still be chosen with some small probability,
+#' - since worse choices can still be stored with some small probability,
 #'   the sampling process approximates the posterior distribution efficiently
 #' - using Hamiltonian dynamics and preventing U-turns results in more efficient
 #'   sampling than traditional MCMC sampling
@@ -536,6 +537,7 @@ ggplot() +
 #' - numbers of samples are controlled by the `burnin` and `samples` arguments
 #' 
 #' for more info:
+#' - `https://mc-stan.org/docs/reference-manual/execution.html#random-initial-values`
 #' - `https://arogozhnikov.github.io/2016/12/19/markov_chain_monte_carlo.html`
 #' - `https://discourse.mc-stan.org/t/the-role-of-max-treedepth-in-no-u-turn/24155/2`
 #' - `https://jwmi.github.io/BMB/18-Hamiltonian-Monte-Carlo-and-NUTS.pdf`
@@ -667,7 +669,7 @@ d_temp_missing #' note the `NA`s in the `temp` column
 
 ggplot(d_temp_missing, aes(date, temp)) +
   geom_point(alpha = 0.75) +
-  labs(x = NULL, y = expression(bold(paste("Temperature (\U00B0", "C)"))))
+  labs(x = NULL, y = expression(bold(paste("Temperature (\U00B0", "F)"))))
 
 #' fitting a *GAM* with a smooth term of `doy`
 #' the smooth term is created using the `s()` function
@@ -753,7 +755,7 @@ ggplot() +
   theme(legend.position = "top")
 
 # clear autocorrelation at lag 1
-plot(m_temp)
+plot(m_temp_gam)
 
 #' add an `AR(1)` component
 m_temp_ar <- mvgam(formula = temp ~ s(doy, k = 10, bs = "cr"),
