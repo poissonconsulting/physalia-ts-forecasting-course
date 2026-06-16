@@ -1,5 +1,11 @@
 source("packages.R") # attach necessary packages
 
+#' today's topics:
+#' - multivariate ecological time series
+#' - vector autoregressive processes
+#' - dynamic factor models
+#' - multivariate forecast evaluation
+
 # multiple cores from the same lake: multiple time series for the same pigments
 #' core locations: `https://onlinelibrary.wiley.com/cms/asset/a02d5fe1-044e-4dd2-b50c-ff33f328d953/fwb14192-fig-0001-m.jpg`
 SAMPLING_DATE <- lubridate::decimal_date(as.POSIXlt("2014-04-01"))

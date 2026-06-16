@@ -1,6 +1,12 @@
 source("packages.R") # attach necessary packages
 source("gaussian-process-functions.R") # for plotting GP covariance function
 
+#' today's topics:
+#' - state space models
+#' - fitting SSMs in `{mvgam}`
+#' - gaussian processes
+#' - dynamic coefficient models
+
 #' *Stete space mdoels*:
 #' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
 #' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`

@@ -1,5 +1,10 @@
 source("packages.R") # attach necessary packages
 
+#' today's topics:
+#' - forecasting from dynamic models
+#' - interpreting the different types of predictions
+#' - comparing models and assessing them with forecasts
+
 #' *State space models*:
 #' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
 #' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
