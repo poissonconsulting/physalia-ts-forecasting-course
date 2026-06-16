@@ -184,8 +184,8 @@ layout(1)
 # autocorrelation present at lags 1 and 12, but much better than previous models
 plot(m_gam_month)
 
-# state space models (SSMs) the separate true latent trend from observation
-# trend by assuming that:
+# state space models (SSMs) separate the true trend from observational trend by
+# assuming that:
 # (1) true values of the response are autocorrelated (e.g., y_t will likely be
 # similar to y_{t-1}), and
 # (2) residuals are independent once we account for the model (including
@@ -510,7 +510,7 @@ how_to_cite(m_diatox_car_ad)
 
 #' **break**
 
-#' Gaussian Processes
+# Gaussian Processes ----
 #' for more info, see `katbailey.github.io/post/gaussian-processes-for-dummies`
 #' 
 #' rather than assuming the y values are independent, leverage the properties
@@ -652,7 +652,7 @@ as.data.frame(m_diatox_gp, variable = "gp_", regex = TRUE) %>%
 #' - may be scaled so that the maximum euclidean distance between points is 1     
 #' `alpha`: marginal variability; similar to variance in vertical direction
 
-#' Dynamic coefficient models
+# Dynamic coefficient models ----
 #' the GP term above can be seen as the change in the intercept term over time,
 #' i.e., an interaction between time and the intercept. We can also use GPs to
 #' create interactions of a slope over time, which gives us dynamic coefficient

@@ -46,7 +46,7 @@ ggplot(pigments, aes(year, diatox)) +
   geom_smooth(method = "gam", color = "black", formula = y ~ s(x, k = 15)) +
   ylim(c(0, NA))
 
-# Multivariate ecological time series ----
+# multivariate ecological time series ----
 # we want to allow the model to learn about trends ...
 ggplot(pigments, aes(year, diatox, color = core, fill = core)) +
   geom_smooth(method = "gam", formula = y ~ s(x, k = 15)) +
@@ -163,7 +163,7 @@ plot_grid(plot(forecast(m_gam_ar1), series = 1),
 
 #' **break**
 
-# Vector autoregressive processes ----
+# vector autoregressive processes ----
 #' y values are correlated in time; use correlated `AR(1)` processes: `VAR(1)`
 #' `VAR(1)` processes allow us to:
 #' - predict missing observations d using AR processes from other series
@@ -259,7 +259,7 @@ pigments %>%
   geom_line(aes(year, Estimate)) +
   geom_vline(xintercept = 1950, lty= "dashed")
 
-# Dynamic factor models ----
+# dynamic factor models ----
 #' allow observations to depend on latent variables: `y_t = θ * z_t`, where:
 #' - `y_t` is a vector of observations at time `t`,
 #' - `z_t` is a vector of dynamic factor estimates at time `t`,
@@ -346,7 +346,7 @@ loo_compare(m_null, m_gam, m_gam_ar1, m_gam_var1, m_df, m_gam_df)
 # - can explain complex models with very few terms
 # - can be hard to interpret
 
-# Multivariate forecast evaluation ----
+# multivariate forecast evaluation ----
 
 # the Energy Score generalizes the continuous ranked probability score to
 # multivariate forecasts

@@ -17,7 +17,7 @@ source("packages.R") # attach necessary packages
 #' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
 #' uncertainty needs to be propagated accordingly across each step
 
-# Forecasting from dynamic models ----
+# forecasting from dynamic models ----
 
 #' applications of state-space models:
 #' Kalman filter and Apollo missions: `https://doi.org/10.1109/MCS.2010.936465`
