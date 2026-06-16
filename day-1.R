@@ -1,6 +1,13 @@
 source("packages.R") # attach necessary packages
 
-# Introduction to time series and time series visualization ----
+#' today's topics:
+#' - introduction to time series and time series visualization
+#' - ARIMA models: theory, assumptions, limitations, and applications
+#' - GLMs and GAMs for ecological modelling
+#' - fitting nonlinear models with `{mvgam}`
+#' - dealing with irregular sampling over time
+
+# introduction to time series and time series visualization ----
 # a simple time series: daily temperature values
 data("airquality")
 ?airquality
@@ -259,7 +266,11 @@ plot_process(ma = c(700, 50))
 plot_process(ar = c(0.7, 0.2), ma = c(0.5, 0.3)) # stationary ARMA(2, 2)
 plot_process(ar = c(0.7, 0.3), ma = c(0.5, 0.3)) # non-stationary ARMA(2, 2)
 
+#' **break**
+
 # applying the plots to the air temperature series ----
+p_temp # what counts as a "change of interest"?
+
 layout(t(1:2))
 acf(d_temp$temp) #' correlation of data pairs at a times `t` and `t+Lag`
 pacf(d_temp$temp) #' correl. between pairs, without previous lags' effects
@@ -375,8 +386,6 @@ d_track %>%
   scale_x_continuous(name = "x (meters)", breaks = (-3:3) * 100) +
   ylab("y (meters)")
 
-#' **break**
-
 # GLMs and GAMs for ecological modelling ----
 
 #' three main parts to a GLM/GAM:
@@ -429,7 +438,7 @@ d_track %>%
 #' `g(mu) = eta = b_0 + b_1 * x_1 + b_2 * x_2`
 #' `mu = g^{-1}(eta) = g^{-1}(b_0 + b_1 * x_1 + b_2 * x_2)`
 
-# fitting models with `{mvgam}` ----
+# fitting models with {mvgam} ----
 ggplot(d_temp, aes(date, temp)) +
   geom_point(alpha = 0.75) +
   labs(x = NULL, y = expression(bold(paste("Temperature (\U00B0", "F)"))))
@@ -574,6 +583,8 @@ ggplot() +
 
 summary(m_temp)
 
+#' **break**
+
 # modeling nonlinear trends ----
 #' fitting a GLM with a polynomial term (note: still technically linear terms)
 #' The terms can't be functions of each other, so we need to add columns of the
@@ -715,9 +726,7 @@ plot(m_temp_gam, type = "smooths") #' model terms; == `plot_mvgam_smooth()`
 
 plot(m_temp_gam, type = "residuals") #' model diagnostics; `plot_mvgam_resids()`
 
-#' **break**
-
-# Temporal random effects and temporal residual correlation structures ----
+# temporal random effects and temporal residual correlation structures ----
 # fit a GAM with a random effect of week
 ggplot(d_temp_missing) + geom_point(aes(week_re, temp), alpha = 0.3)
 
@@ -765,7 +774,7 @@ m_temp_ar <- mvgam(formula = temp ~ s(doy, k = 10, bs = "cr"),
                    control = list(adapt_delta = 0.99))
 
 # chains are occasionally not well-mixed even if Rhat is near 1
-# there seem to be two alternative fits the model is tring to decide between
+# there seem to be two alternative fits the model is trying to decide between
 mcmc_plot(m_temp_ar, type = "trace")
 # chains are not well mixed: conflicting coefficients
 mcmc_plot(m_temp_ar, type = "trace_highlight", highlight = 2)
