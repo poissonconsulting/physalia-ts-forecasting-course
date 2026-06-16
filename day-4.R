@@ -346,6 +346,8 @@ loo_compare(m_null, m_gam, m_gam_ar1, m_gam_var1, m_df, m_gam_df)
 # - can explain complex models with very few terms
 # - can be hard to interpret
 
+#' **break**
+
 # multivariate forecast evaluation ----
 
 # the Energy Score generalizes the continuous ranked probability score to
