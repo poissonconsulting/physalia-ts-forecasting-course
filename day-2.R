@@ -12,10 +12,11 @@ source("gaussian-process-functions.R") # for plotting GP covariance function
 #' today's topics:
 #' - state space models
 #' - fitting SSMs in `{mvgam}`
+#' - dealing with continuous correlations over time (CAR processes)
 #' - gaussian processes
-#' - dynamic coefficient models
+#' - dynamic coefficient models (if time permits)
 
-#' *Stete space mdoels*:
+#' *State space models*:
 #' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
 #' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
 #' - process observations at time `t`: `O_t ~ MVN(Y_proc, s_obs)`
@@ -70,8 +71,8 @@ ggplot(air_passengers, aes(dec_date, passengers, lty = year < 1958)) +
   labs(x = "Year CE", y = "International airline passengers (thousands)") +
   scale_linetype_manual("Dataset", values = c(3, 1), labels = c("Test", "Train"))
 
-data_train <- filter(air_passengers, year <= 1958)
-data_test <- filter(air_passengers, year > 1958)
+data_train <- filter(air_passengers, year < 1958)
+data_test <- filter(air_passengers, year >= 1958)
 
 #' fit a simple gam with `dec_date`
 #' *NOTE:* fitting times are a lot slower if `passengers` is multiplied by 1000
@@ -123,7 +124,7 @@ plot(m_gam_smooth) # autocorrelation is even worse
 #' we can improve the predictions somewhat by extending the basis, but this
 #' still depends on the model and the complexity of the trends...
 #' for more info, see:
-#' `https://fromthebottomoftheheap.net/2020/06/03/extrapolating-with-gams/`
+#' https://fromthebottomoftheheap.net/2020/06/03/extrapolating-with-gams/
 #' fit a GAM with a cubic B spline whose curvature and slope are penalized
 #' note that `k` is quite high now
 m_gam_bs <- mvgam(formula = passengers ~ s(dec_date, k = 50, bs = "bs",
@@ -203,6 +204,13 @@ plot(m_gam_month)
 # - https://nicholasjclark.github.io/mvgam/articles/trend_formulas.html
 
 # fit a GAM with an AR(1) process
+#' the `m_gam_ar` model is:
+#' `passengers ∼ Poisson(λ_t)`            # observation
+#' `log(λ_t) = l_t`                       # trend of mean obs on log scale
+#' `l_t = b_0 + s(year) + s(month) + z_t` # latent process trend varies w time
+#' `z_t ∼ Normal(l_{t−1} * a, σ)`         # latent stoch. component on log scale
+#' where `a` is the coefficient of the `AR(1)` process
+#' note: `log(λ_t) = l_t` implies mean observations are the true state
 m_gam_ar <- mvgam(formula = passengers ~ 0,
                   trend_formula = ~
                     s(year, k = 9, bs = "tp") +
@@ -218,14 +226,6 @@ m_gam_ar <- mvgam(formula = passengers ~ 0,
                   samples = 500,
                   parallel = TRUE,
                   silent = 2)
-
-#' the `m_gam_ar` model is:
-#' `passengers ∼ Poisson(λ_t)`            # observation
-#' `log(λ_t) = l_t`                       # trend of mean obs on log scale
-#' `l_t = b_0 + s(year) + s(month) + z_t` # latent process trend varies w time
-#' `z_t ∼ Normal(l_{t−1} * a, σ)`         # latent stoch. component on log scale
-#' where `a` is the coefficient of the `AR(1)` process
-#' note: `log(λ_t) = l_t` implies mean observations are the true state
 
 summary(m_gam_ar) # diagnostics are ok
 
@@ -244,13 +244,13 @@ data_train_12 <- mutate(data_train, lag_12_passengers = lag(passengers, 12)) %>%
   filter(! is.na(lag_12_passengers))
 data_test_12 <- air_passengers %>%
   mutate(lag_12_passengers = lag(passengers, 12)) %>%
-  filter(year > 1958, ! is.na(lag_12_passengers))
+  filter(year >= 1958, ! is.na(lag_12_passengers))
 
 # add a term to crudely account for a 12-month autocorrelation
 # fits in ~100 seconds
 m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
                      trend_formula = ~
-                       s(year, k = 9, bs = "tp") +
+                       s(year, k = 8, bs = "tp") +
                        s(month, k = 10, bs = "cc") +
                        log(lag_12_passengers),
                      trend_model = AR(p = 1),
@@ -273,7 +273,7 @@ plot_grid(plot(m_gam_ar), # see values at lag 12 for ACF and pACF
 #' how does `{mvgam}` handle many missing data?
 #' `{mvgam}` does not drop rows with `NA` response values, so it keeps track of
 #' which values are temporally adjacent. for a comparison with `{brms}` see:
-#' `https://github.com/nicholasjclark/physalia-forecasting-course/blob/main/day2/tutorial_2_physalia.html`
+#' https://github.com/nicholasjclark/physalia-forecasting-course/blob/main/day2/tutorial_2_physalia.html
 #' other advantages of using `{mvgam}` over `{brms}` include:
 #' - `{mvgam}` allows each time series to have different AR1 parameters
 #' - `{mvgam}` can model the correlations among errors of each time series
@@ -281,6 +281,12 @@ plot_grid(plot(m_gam_ar), # see values at lag 12 for ACF and pACF
 data_train_missing <- data_train %>%
   mutate(passengers = if_else(1:n() %in% sample(1:n(), n() * 0.9), NA_real_,
                               passengers))
+data_train_missing
+ggplot(data_train_missing, aes(dec_date, passengers)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Year CE", y = "International airline passengers (thousands)") +
+  scale_linetype_manual("Dataset", values = c(3, 1), labels = c("Test", "Train"))
 
 m_gam_ar_missing <-
   mvgam(formula = passengers ~ 0,
@@ -301,7 +307,7 @@ m_gam_ar_missing <-
 plot(m_gam_ar_missing, type = "forecast")
 #' `{brms}` would assume that each observation follows the previous row!
 
-# compare to a simple GAM
+# compare to a simple GAM (i.e., without AR(1) term)
 m_gam_missing <-
   mvgam(formula = passengers ~ 0,
         trend_formula = ~
@@ -335,7 +341,8 @@ plot_grid(
 
 # smooth correlations over time ----
 # continuous auto-regressive (CAR) processes
-#' data from: Gushulak et al. (2023; https://doi.org/10.1111/fwb.14192)
+#' data from: Gushulak et al. (2023); https://doi.org/10.1111/fwb.14192
+#' study site: https://onlinelibrary.wiley.com/cms/asset/a02d5fe1-044e-4dd2-b50c-ff33f328d953/fwb14192-fig-0001-m.jpg
 pigments <- read.xlsx("https://github.com/simpson-lab/wpg-mb-lakes/raw/refs/heads/main/data/mb/Manitoba%20pigs%20isotope%20Core%201%20April%202014.xlsx") %>%
   as_tibble() %>%
   rename_with(stringr::str_to_snake, everything()) %>%
@@ -413,27 +420,13 @@ summary(m_diatox_0)
 mcmc_plot(m_diatox_0, type = "trace", variable = ".", regex = TRUE)
 draw(m_diatox_0$mgcv_model, n = 200)
 
-#' time is wrong; should be fixed in version 2.0 of `{mvgam}` later this year
-plot(m_diatox_0, type = "forecast")
-
 #' add a `CAR(1)` term to account for continuous-time autocorrelation
-#' `AR(1)` but not `CAR(1)` fails if time is irregular in `{mvgam}` v.1.1.594
-m_diatox_car <- mvgam(diatox ~ s(year, k = 10),
-                      trend_model = CAR(1),
-                      noncentred = TRUE,
-                      family = Gamma(link = "log"),
-                      data = pigments,
-                      chains = 4,
-                      burnin = 500,
-                      samples = 500,
-                      control = list(adapt_delta = 0.95),
-                      parallel = TRUE)
 #' the model is:
 #' `diatox ∼ Gamma(mu_t, theta)`        # observation
 #' `log(mu_t) = s(year) + l_t`          # trend of mean obs on log scale
-#' `l_t = z_t`                          # latent process trend varies w time
+#' `l_t = 0 + z_t`                      # latent process trend varies w time
 #' `z_t ∼ Normal(z_{t−dt} * a^{dt}, σ)` # latent stochastic component
-#' where `a < 1` is the coef of the `CAR(1)` process for time difference `dt`
+#' where `0 < a < 1` is the coef of the `CAR(1)` process for time difference `dt`
 #' note: `log(λ_t) = l_t` implies mean observations are the true state
 #' 
 #' note: when `dt = 1`, the model becomes a simple `AR(1)` process:
@@ -443,7 +436,18 @@ m_diatox_car <- mvgam(diatox ~ s(year, k = 10),
 #' `E(z_t) = z_{t−dt} * a^{dt} = z_{t-0} * a^0 = z_{t} * 1`
 #' 
 #' note: as `dt` becomes large, `z_t` becomes independent from `z_{t-dt}`
-#' `E(z_t) = z_{t−dt} * a^{Inf} = z_{t-dt} * 0 = z_{t−1} * 0`
+#' `E(z_t) = z_{t−dt} * a^{Inf} = z_{t-dt} * 0 = z_{t−Inf} * 0`
+m_diatox_car <- mvgam(formula = diatox ~ s(year, k = 6),
+                      trend_formula = ~ 0,
+                      trend_model = CAR(1),
+                      noncentred = TRUE,
+                      family = Gamma(link = "log"),
+                      data = pigments,
+                      chains = 4,
+                      burnin = 500,
+                      samples = 500,
+                      control = list(adapt_delta = 0.95),
+                      parallel = TRUE)
 
 plot(m_diatox_car, type = "residuals") # diagnostics look great
 summary(m_diatox_car) # summary looks good
@@ -451,8 +455,6 @@ mcmc_plot(m_diatox_car, type = "trace", variable = ".", regex = TRUE) # good
 
 plot_predictions(m_diatox_car, "year") #' `s(year)` is very smooth...
 plot(hindcast(m_diatox_car)) # predictions with data points are not smooth...
-plot(m_diatox_car, type = "forecast") # identical since no missing future data
-#' *NOTE:* `plot(type = "forecast")` will have a bad x axis if times are missing
 
 # posterior predictive checks: very high uncertainty
 pp_check(m_diatox_car, "dens_overlay", ndraws = 100)
@@ -461,9 +463,10 @@ pp_check(m_diatox_car, "intervals") # misses the spike entirely
 pp_check(m_diatox_car, "ribbon")
 pp_check(m_diatox_car, "error_scatter_avg") # error is proportional to y
 pp_check(m_diatox_car, "scatter_avg") # spike is clearly visible
+mvgam::plot_mvgam_trend(m_diatox_car) # CAR(1) process
 pp_check(m_diatox_car, "resid_ribbon") # residuals are uncorrelated after CAR(1)
 
-# why is the term so smooth and uncertain?
+# why is the year term so smooth and uncertain?
 # we can get a clue by looking at the posterior for the CAR(1) coefficient:
 #' the model attributes the spike to the `CAR(1)` process instead of `s(year)`
 plot_grid(mcmc_plot(m_diatox_car, type = "intervals", variable = "ar1[1]"),
@@ -478,14 +481,14 @@ plot_grid(mcmc_plot(m_diatox_car, type = "intervals", variable = "ar1[1]"),
 # the adaptive spline allows the wiggliness to vary over the years
 ?mgcv::smooth.construct.ad.smooth.spec
 
-m_diatox_car_ad <- mvgam(formula = diatox ~ s(year, bs = "ad", k = 30),
+m_diatox_car_ad <- mvgam(formula = diatox ~ s(year, bs = "ad", k = 15),
                          trend_model = CAR(),
                          noncentred = TRUE,
                          family = Gamma(link = "log"),
                          data = pigments,
                          chains = 4,
                          burnin = 500,
-                         samples = 1500,
+                         samples = 1000,
                          control = list(adapt_delta = 0.95),
                          parallel = TRUE,
                          silent = 2)
@@ -496,8 +499,6 @@ mcmc_plot(m_diatox_car_ad, type = "trace", variable = ".", regex = TRUE)
 plot(m_diatox_car_ad, type = "residuals") # residuals from the model
 plot_predictions(m_diatox_car_ad, "year") # smooth term of year
 plot(hindcast(m_diatox_car_ad))  # predictions with data points
-#' time axis is wrong if missing years are not present in the dataset as `NA`
-plot(m_diatox_car_ad, type = "forecast")  # predictions with data points
 
 # adaptive smooth allows to attribute more change to the smooth and less to CAR
 plot_grid(mcmc_plot(m_diatox_car, type = "intervals", variable = "ar1[1]") +
@@ -519,7 +520,7 @@ how_to_cite(m_diatox_car_ad)
 #' **break**
 
 # Gaussian Processes ----
-#' for more info, see `katbailey.github.io/post/gaussian-processes-for-dummies`
+#' for more info, see katbailey.github.io/post/gaussian-processes-for-dummies
 #' 
 #' rather than assuming the y values are independent, leverage the properties
 #' of time series data by recognizing the autocorrelation across time. To do
@@ -624,7 +625,7 @@ diag(10) # I_{10} identity matrix
 #' 
 #' NOTE: many materials on GPs are from a machine learning perspective, which
 #' uses fairly different terminology, so learning about GPs can be confusing.
-#' `https://www.youtube.com/watch?v=Y2ZLt4iOrXU` is a good resource, but you
+#' https://youtu.be/MtXg7fxQgeA?si=FfPjVZuJHm94XktP is a good resource, but you
 #' may need to watch earlier lectures to understand it fully
 m_diatox_gp <- mvgam(formula = diatox ~
                        gp(year, # variable for calculating distances
@@ -660,13 +661,17 @@ as.data.frame(m_diatox_gp, variable = "gp_", regex = TRUE) %>%
 #' - may be scaled so that the maximum euclidean distance between points is 1     
 #' `alpha`: marginal variability; similar to variance in vertical direction
 
-# Dynamic coefficient models ----
+# Dynamic coefficient models (if time permits) ----
 #' the GP term above can be seen as the change in the intercept term over time,
 #' i.e., an interaction between time and the intercept. We can also use GPs to
 #' create interactions of a slope over time, which gives us dynamic coefficient
 #' models.
-#' add a time-varying effect of percent nitrogen in the (dry) soil
+#' add a time-varying effect of percent nitrogen in the (dry) soil to estimate
+#' the effects of nutrient input and eutrophication on diatom abundance
 #' this model will only work if `time == year`
+ggplot(pigments) +
+  geom_point(aes(percent_n, diatox))
+
 m_diatox_pn <- mvgam(formula = diatox ~
                        dynamic(percent_n, # variable varying over time
                                k = 20, # n of basis functions for the GP
@@ -690,16 +695,7 @@ plot_predictions(m_diatox_pn, "percent_n", type = "expected")
 expand_grid(percent_n = c(0.4, 0.6, 0.8),
             time = gratia:::seq_min_max(pigments$year, n = 400),
             series = unique(pigments$series)) %>%
-  #' using `predictions()` with `{mvgam}` v. 1.1.594 results in the error:
-  #' Error:
-  #' ! Unable to compute predicted values with this model. This error can arise
-  #' when `insight::get_data()` is unable to extract the dataset from the model
-  #' object, or when the data frame was modified since fitting the model. You
-  #' can try to supply a different dataset to the `newdata` argument. In
-  #' addition, this error message was raised:the following required variables
-  #' are missing from newdata:
-  #' seriesBug Tracker: https://github.com/vincentarelbundock/marginaleffects/issues
-  bind_cols(., predict(m_diatox_pn, newdata = ., type = "expected")) %>%
+  bind_cols(predict(m_diatox_pn, newdata = ., type = "expected")) %>%
   ggplot(aes(time, Estimate, group = percent_n)) +
   coord_cartesian(ylim = c(0, 200)) +
   geom_ribbon(aes(time, ymin = Q2.5, ymax = Q97.5, fill = percent_n),
@@ -822,5 +818,5 @@ expand_grid(
 #' dynamic coefficient models in `{mgcv}`
 #' in `{mgcv}`, you can fit the term using `s(year, by = percent_n)`, or, more
 #' specifically `s(year, by = percent_n, bs = "gp")`
-m_diatox_pn$mgcv_model
+m_diatox_pn_ti$mgcv_model
 #' in `{brms}`, you can also fit the term using `gp(year, by = percent_n, ...)`
