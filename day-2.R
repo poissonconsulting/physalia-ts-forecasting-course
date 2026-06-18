@@ -1,6 +1,14 @@
 source("packages.R") # attach necessary packages
 source("gaussian-process-functions.R") # for plotting GP covariance function
 
+#' yesterday's topics:
+#' - ARIMA models:
+#'   - AR if *data* are correlated through time
+#'   - I if data need to be detrended by taking differences
+#'   - MA if *errors* are correlated through time
+#' - GAM's smooth terms are a continuous version of random effects
+#' - to estimate change, data should have 3+ observations per period of interest
+
 #' today's topics:
 #' - state space models
 #' - fitting SSMs in `{mvgam}`
