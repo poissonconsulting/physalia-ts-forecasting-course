@@ -260,18 +260,24 @@ pigments %>%
   geom_vline(xintercept = 1950, lty= "dashed")
 
 # dynamic factor models ----
-#' allow observations to depend on latent variables: `y_t = θ * z_t`, where:
-#' - `y_t` is a vector of observations at time `t`,
-#' - `z_t` is a vector of dynamic factor estimates at time `t`,
-#' - `θ` is a matrix of loading coefficients that controls how each series in
-#'   `y` depends on the factors in `z`
+#' - a dynamic factor (DF) are latent time series
+#' - DF loadings are coefficients that relate DFs to observed time series
+#' - DFMs are similar to PCA, but they allow a vcov matrix with cov != 0
+#' - this allows for correlations across time series
+#' - allow observations to depend on latent variables: `y_t = θ * z_t`, where:
+#'   - `y_t` is a vector of observations at time `t`,
+#'   - `z_t` is a vector of dynamic factor estimates at time `t`,
+#'   - `θ` is a matrix of loading coefficients that controls how each series in
+#'     `y` depends on the `z` dyamic factors (i.e., dimension-reduced ts)
+#' - factor: 
 #' for more info, see:
-#' - `https://www.youtube.com/watch?v=FMLh8c_Sa8s`
-#' - `cran.r-project.org/web/packages/dfms/vignettes/dynamic_factor_models.pdf`
+#' - https://atsa-es.github.io/atsa2017/Labs/Week%206%20dynamic%20factor%20analysis/Intro_to_DFA.html
+#' - https://www.youtube.com/watch?v=FMLh8c_Sa8s
+#' - cran.r-project.org/web/packages/dfms/vignettes/dynamic_factor_models.pdf
 #' note: can ignore warning about integer division. it's caused by forced
 #' rounding from a decimal to an integer in the stan code
 m_df <- mvgam(formula = diatox ~ s(core, bs ="re"), # assume stationarity
-              use_lv = TRUE, n_lv = 4, # needs to be chosen manually
+              use_lv = TRUE, n_lv = 2, # needs to be chosen manually
               trend_model = AR(1),
               noncentred = FALSE, # since trend formula is empty
               family = Gamma(link = "log"),
