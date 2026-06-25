@@ -1,5 +1,15 @@
 source("packages.R") # attach necessary packages
 
+#' recap:
+#' - ARIMA models:
+#'   - AR if *data* are correlated through time
+#'   - I if data need to be detrended by taking differences
+#'   - MA if *errors* are correlated through time
+#' - CAR models are a continuous-time version of AR models
+#' - GAM's smooth terms are a continuous version of random effects
+#' - to estimate change, data should have 3+ observations per period of interest
+#' - state space models separate the observation process from the latent process
+
 #' today's topics:
 #' - forecasting from dynamic models
 #' - interpreting the different types of predictions
