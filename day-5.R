@@ -2,7 +2,7 @@ source('packages.R') # attach necessary packages
 library('timeSeriesDataSets') # for datasets
 library('tsibble') #' to read in quarters correctly for `tourism_tbl_ts` below
 
-# Extended practical examples using {mvgam}
+#' Extended practical examples using `{mvgam}`
 #' more good datasets included in `good-datasets.R`
 
 # hourly pedestrian counts ----
@@ -15,8 +15,8 @@ ped <- timeSeriesDataSets::pedestrian_tbl_ts %>%
 ped
 table(ped$sensor) # four sensors at four crosswalks in Melbourne, Australia
 
-pacf(filter(ped, sensor == sensor[1])$count)
-acf(filter(ped, sensor == sensor[1])$count)
+pacf(filter(ped, sensor == "Birrarung Marr")$count)
+acf(filter(ped, sensor == "Birrarung Marr")$count)
 
 # relationships across four locations
 ped %>%
@@ -38,19 +38,30 @@ ped %>%
 ped %>%
   as_tibble() %>% # convert from tsibble (forcibly grouped by date otherwise)
   mutate(h = lubridate::hour(date_time)) %>%
-  ggplot(aes(h, count, group = date)) +
+  ggplot(aes(h, count, group = date, color = doy)) +
   facet_wrap(~ sensor) +
-  geom_line(alpha = 0.05)
+  geom_line(alpha = 0.2) +
+  scale_color_bamO()
 
 # daily Australian domestic overnight trips ----
-tourism_tbl_ts
+tourism_tbl <- mutate(tourism_tbl_ts,
+                      q_date = as.Date(Quarter),
+                      year = year(q_date),
+                      q = quarter(q_date))
+tourism_tbl
 
 layout(1:2)
-acf(filter(tourism_tbl_ts, Region == Region[1])$Trips)
-pacf(filter(tourism_tbl_ts, Region == Region[1])$Trips)
+acf(filter(tourism_tbl_ts, Region == "Adelaide")$Trips)
+pacf(filter(tourism_tbl_ts, Region == "Adelaide")$Trips)
 layout(1)
 
-ggplot(tourism_tbl_ts, aes(as.Date(Quarter), Trips, group = Region, color = Purpose)) +
+ggplot(tourism_tbl, aes(q_date, Trips, group = Region, color = Purpose)) +
   facet_grid(State ~ Purpose) +
   geom_line() +
-  scale_color_bright()
+  scale_color_bright() +
+  xlab("Year")
+
+ggplot(tourism_tbl, aes(q, Trips, group = paste(year, Region), color = year)) +
+  facet_grid(State ~ Purpose) +
+  geom_line() +
+  scale_color_lipari()
