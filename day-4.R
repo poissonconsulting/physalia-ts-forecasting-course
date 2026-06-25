@@ -1,5 +1,13 @@
 source("packages.R") # attach necessary packages
 
+#' recap:
+#' - ARMA and CAR models help deal with autocorrelation in data and residuals
+#' - CAR models are a continuous-time version of AR models
+#' - GAM's smooth terms are a continuous version of random effects
+#' - to estimate change, data should have 3+ observations per period of interest
+#' - state space models separate the observation process from the latent process
+#' - forecasting models are best assessed using out-of-sample prediction
+
 #' today's topics:
 #' - multivariate ecological time series
 #' - vector autoregressive processes
