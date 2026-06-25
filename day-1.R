@@ -643,7 +643,7 @@ m_temp_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
 #' the model will spend more time near the better parameter estimates and less
 #' near unlikely values, which estimates the posterior distribution.
 #' ideally, all chains should be similar and indistinguishable.
-#' for more info on HMC sampling: `https://www.youtube.com/watch?v=a-wydhEuAm0s`
+#' for more info on HMC sampling: https://www.youtube.com/watch?v=a-wydhEuAm0s
 summary(m_temp_poly)
 mcmc_plot(m_temp_poly, type = "trace", variable = rownames(coef(m_temp_poly)))
 plot(m_temp_poly, type = "residuals") #' can also use `plot_mvgam_resids()`

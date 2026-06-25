@@ -7,7 +7,7 @@ source("packages.R") # attach necessary packages
 #' - multivariate forecast evaluation
 
 # multiple cores from the same lake: multiple time series for the same pigments
-#' core locations: `https://onlinelibrary.wiley.com/cms/asset/a02d5fe1-044e-4dd2-b50c-ff33f328d953/fwb14192-fig-0001-m.jpg`
+#' core locations: https://onlinelibrary.wiley.com/cms/asset/a02d5fe1-044e-4dd2-b50c-ff33f328d953/fwb14192-fig-0001-m.jpg
 SAMPLING_DATE <- lubridate::decimal_date(as.POSIXlt("2014-04-01"))
 
 pigments <-
@@ -177,7 +177,7 @@ plot_grid(plot(forecast(m_gam_ar1), series = 1),
 #' - `A` is the `s * s` matrix of correlations for `y_t` and `y_{t-1}` values,
 #' - `Σ` is the covariance matrix that determines the correlation across errors
 #' can safely ignore messages about rejections of initial values
-#' for more info: `nicholasjclark.github.io/mvgam/articles/trend_formulas.html`
+#' for more info: nicholasjclark.github.io/mvgam/articles/trend_formulas.html
 
 d_train <- mutate(d_train,
                   log_diatox = log(diatox),
@@ -388,7 +388,7 @@ loo_compare(m_null, m_gam, m_gam_ar1, m_gam_var1, m_df, m_gam_df)
 # but we need separate smooths for each core because fs terms can't use bs bases
 # b-splines can be useful, but extrapolating with GAMs is hard if predictors
 # aren't truly deterministic (i.e., not a smooth of time)
-#' for more info: `fromthebottomoftheheap.net/2020/06/03/extrapolating-with-gams/`
+#' for more info: fromthebottomoftheheap.net/2020/06/03/extrapolating-with-gams/
 #' using `by` smooths because `fs` smooths don't support `bs` basis
 m_gam_ar1_bs <- mvgam(formula = diatox ~
                         core + #' `by` smooths require explicit intercepts
