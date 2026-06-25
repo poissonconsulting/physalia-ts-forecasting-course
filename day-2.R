@@ -575,19 +575,19 @@ tibble(distance = 1:75,
 #' of random effects
 ggplot(pigments, aes(round(year / 50) * 50, diatox)) +
   geom_point(alpha = 0.75) +
-  stat_summary(fun = "mean", geom = "point", col = 'darkorange', size = 2) +
+  stat_summary(fun = "mean", geom = "point", col = "darkorange", size = 2) +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs", k = 5)) +
   labs(x = "Year CE", y = lab_diatox)
 
 ggplot(pigments, aes(round(year / 20) * 20, diatox)) +
   geom_point(alpha = 0.75) +
-  stat_summary(fun = "mean", geom = "point", col = 'darkorange', size = 2) +
+  stat_summary(fun = "mean", geom = "point", col = "darkorange", size = 2) +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs", k = 10)) +
   labs(x = "Year CE", y = lab_diatox)
 
 ggplot(pigments, aes(round(year, -1), diatox)) +
   geom_point(alpha = 0.75) +
-  stat_summary(fun = "mean", geom = "point", col = 'darkorange', size = 2) +
+  stat_summary(fun = "mean", geom = "point", col = "darkorange", size = 2) +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs", k = 20)) +
   labs(x = "Year CE", y = lab_diatox)
 
