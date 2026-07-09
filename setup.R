@@ -3,7 +3,7 @@
 if(version$major < 4) {
   stop(paste0("Please update R. Your current version (", version$major, ".",
               version$minor), ") is too old.")
-} else if (as.numeric(version$minor) <= 5) {
+} else if (as.numeric(version$minor) <= 6) {
   warning(paste0("Your R version (", version$major, ".", version$minor,
                  ") is out of date. You may want to update it."))
 }
