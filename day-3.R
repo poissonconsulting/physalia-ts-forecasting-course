@@ -29,8 +29,6 @@ source("packages.R") # attach necessary packages
 
 # forecasting from dynamic models ----
 
-#' applications of state-space models:
-#' Kalman filter and Apollo missions: `https://doi.org/10.1109/MCS.2010.936465`
 
 air_passengers <-
   tibble(time = 1:length(AirPassengers),

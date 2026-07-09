@@ -521,6 +521,8 @@ how_to_cite(m_diatox_car_ad)
 
 # Gaussian Processes ----
 #' for more info, see katbailey.github.io/post/gaussian-processes-for-dummies
+#' applications of state-space models:
+#' Kalman filter and Apollo missions: https://doi.org/10.1109/MCS.2010.936465
 #' 
 #' rather than assuming the y values are independent, leverage the properties
 #' of time series data by recognizing the autocorrelation across time. To do
