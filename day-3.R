@@ -374,12 +374,12 @@ plot_slopes(m_gam_ar, variables = "month", by = "month", type = "response",
 #'   - root mean squared error: `sqrt(mean((e)^2))`; similar to SD
 #'   - mean abs % error: `100 * mean(abs(e / k)`; scale independent if `k > 0`
 #'     `k` can be observations or another benchmark. for more info:
-#'     `https://www.youtube.com/watch?v=ek5xLEoQN3E`
+#'     https://www.youtube.com/watch?v=ek5xLEoQN3E
 
 # interval-based forecast evaluation
 # the scaled interval score (SIS) evaluates forecasts based on deviation from
 # an interval of y (e.g., a credible interval)
-#' for more info, see: `https://doi.org/10.1371/journal.pcbi.1008618`
+#' for more info, see: https://doi.org/10.1371/journal.pcbi.1008618
 calculate_sis <- function(u, l, alpha, y) {
   sis <- case_when(l >= y & y <= u ~ u - l, # in the [l, u] interval
                    y < l ~ u - l + 2 / alpha * (l - y), # below the interval

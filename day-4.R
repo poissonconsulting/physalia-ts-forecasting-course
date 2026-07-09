@@ -110,7 +110,7 @@ plot_grid(plot(forecast(m_null), series = 1),
           plot(forecast(m_null), series = 4))
 
 # fit a hierarchical GAM
-#' `https://doi.org/10.7717/peerj.6876/fig-4`
+#' https://doi.org/10.7717/peerj.6876/fig-4
 m_gam <- mvgam(formula = diatox ~ core + s(year, core, bs = "fs", k = 10),
                family = Gamma(link = "log"),
                data = d_train,

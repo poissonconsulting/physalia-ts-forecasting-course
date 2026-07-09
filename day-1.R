@@ -452,8 +452,8 @@ ggplot(d_temp, aes(date, temp)) +
 #'   *posterior* knowledge state
 #' - choose priors that include sensible parameters; prevent impossible
 #'   parameter values, but don't force a specific hypothesis. for more info:
-#' ..- `https://doi.org/10.3390/e19100555`
-#' ..- `https://www.youtube.com/watch?v=ztbYkBPDOgU`
+#' ..- https://doi.org/10.3390/e19100555
+#' ..- https://www.youtube.com/watch?v=ztbYkBPDOgU
 #' 
 #' can get priors from `get_mvgam_priors()` without fitting a model
 #' ensure to specify family and link scale so coefficients on the right scale
@@ -546,12 +546,12 @@ ggplot() +
 #' - numbers of samples are controlled by the `burnin` and `samples` arguments
 #' 
 #' for more info:
-#' - `https://mc-stan.org/docs/reference-manual/execution.html#random-initial-values`
-#' - `https://arogozhnikov.github.io/2016/12/19/markov_chain_monte_carlo.html`
-#' - `https://discourse.mc-stan.org/t/the-role-of-max-treedepth-in-no-u-turn/24155/2`
-#' - `https://jwmi.github.io/BMB/18-Hamiltonian-Monte-Carlo-and-NUTS.pdf`
-#' - `https://arxiv.org/abs/1701.02434`
-#' - `https://mc-stan.org/learn-stan/diagnostics-warnings.html`
+#' - https://mc-stan.org/docs/reference-manual/execution.html#random-initial-values
+#' - https://arogozhnikov.github.io/2016/12/19/markov_chain_monte_carlo.html
+#' - https://discourse.mc-stan.org/t/the-role-of-max-treedepth-in-no-u-turn/24155/2
+#' - https://jwmi.github.io/BMB/18-Hamiltonian-Monte-Carlo-and-NUTS.pdf
+#' - https://arxiv.org/abs/1701.02434
+#' - https://mc-stan.org/learn-stan/diagnostics-warnings.html
 
 # fitting a simple GLM (fits in < 1 second)
 m_temp <- mvgam(temp ~ doy,
