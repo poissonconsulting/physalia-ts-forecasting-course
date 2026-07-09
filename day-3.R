@@ -10,11 +10,6 @@ source("packages.R") # attach necessary packages
 #' - to estimate change, data should have 3+ observations per period of interest
 #' - state space models separate the observation process from the latent process
 
-#' today's topics:
-#' - forecasting from dynamic models
-#' - interpreting the different types of predictions
-#' - comparing models and assessing them with forecasts
-
 #' *State space models*:
 #' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
 #' - process output (states):          `Y_proc ~ MVN(mu_proc, s_proc)`
@@ -27,8 +22,15 @@ source("packages.R") # attach necessary packages
 #' - process model:                    `mu_proc = b0 + b1 * x1 + ...`
 #' uncertainty needs to be propagated accordingly across each step
 
-# forecasting from dynamic models ----
+#' today's topics:
+#' - forecasting from dynamic models
+#' - interpreting the different types of predictions
+#' - comparing models and assessing them with forecasts:
+#'   - Point-based forecast evaluation
+#'   - Probabilistic forecast evaluation
+#'   - Bayesian posterior predictive checks
 
+# forecasting from dynamic models ----
 
 air_passengers <-
   tibble(time = 1:length(AirPassengers),
@@ -41,6 +43,12 @@ air_passengers <- mutate(air_passengers, lag_12_passengers = lag(passengers, 12)
 data_train <- filter(air_passengers, year <= 1955) %>%
   filter(! is.na(lag_12_passengers)) # lagged value before 1st observation is NA
 data_test <- filter(air_passengers, year > 1955)
+
+ggplot(air_passengers, aes(dec_date, passengers, lty = year < 1955)) +
+  geom_line() +
+  geom_vline(xintercept = 1955, lty = "dashed") +
+  labs(x = "Year CE", y = "International airline passengers (thousands)") +
+  scale_linetype_manual("Dataset", values = c(3, 1), labels = c("Test", "Train"))
 
 m_gam <- mvgam(formula = passengers ~ 0, # no error in observation process
                trend_formula = ~
@@ -103,11 +111,10 @@ summary(m_gam_ar) # check diagnostics
 layout(matrix(c(1, 1:3), ncol = 2, byrow = TRUE))
 plot(m_gam_ar, type = "forecast")
 plot(loo(m_gam_ar), diagnostic = "k")
-abline(v = 50, col = "grey", lty = "dashed")
 plot(loo(m_gam_ar), diagnostic = "ESS") #' same as `diagnostic = "n_eff"`
 layout(1)
 
-#' Dynamic `mvgam` models contain draws for many quantities, all stored as MCMC
+#' Dynamic `{mvgam}` models contain draws for many quantities, all stored as MCMC
 #' draws in an object of class `stanfit` in the `model_output` slot:
 #' - `β` coefficients for linear predictor terms (called `b`)
 #' - Family-specific shape/scale parameters:
@@ -118,6 +125,11 @@ layout(1)
 #'    - `σ` and `ar1` for AR trends
 #' - In-sample posterior predictions: `ypred`
 #' - In-sample posterior trend estimates: `trend`
+
+#' LV and LV_raw are latent variables from AR trend
+#' ypred are predictions
+#' mus are estimated means
+#' trend
 
 class(m_gam_ar$model_output)
 m_gam_ar$model_output@model_pars # names of model parameters
@@ -143,7 +155,7 @@ plot(m_gam_ar, type = "trend") +
   geom_vline(xintercept = nrow(data_train), lty = "dashed")
 plot(m_gam_ar, type = "smooths", trend_effects = TRUE)
 
-# generate forecasts for up to and of 2026
+# generate forecasts for up to end of 2026
 # predicting later is useful if data are not available or too large to add
 data_test
 preds_2026 <- tibble(time = max(data_train$time) + 1:(12 * (2027 - 1963)),
@@ -155,6 +167,7 @@ preds_2026 <- tibble(time = max(data_train$time) + 1:(12 * (2027 - 1963)),
 
 #' need to predict with `for` loop since lag-12 values are not always avaiable
 #' not the best way to predict: it does not include uncertainty in lagged values
+tail(preds_2026)
 for(i in which(is.na(preds_2026$passengers))) {
   if(is.na(preds_2026$lag_12_passengers[i])) {
     preds_2026$lag_12_passengers[i] <- preds_2026$passengers[i - 12]
@@ -163,6 +176,7 @@ for(i in which(is.na(preds_2026$passengers))) {
   preds_2026$passengers[i] <-
     predict(m_gam_ar, preds_2026[i, ], type = "expected")[, "Estimate"]
 }
+tail(preds_2026)
 
 # to stop from calculating score (since values are predicted)
 preds_2026 <- rename(preds_2026, estimate = passengers)
@@ -170,14 +184,14 @@ preds_2026 <- rename(preds_2026, estimate = passengers)
 # model predicts that passengers will exceed 8 million by the end of 1972
 print(preds_2026, n = 13) #' `lag_12_passengers` for row 13 is `estimate` for 1
 max(preds_2026$dec_date)
-plot_mvgam_fc(m_gam_ar, newdata = preds_2026, ylim = c(0, 8e6 / 1e3),
+plot_mvgam_fc(m_gam_ar, newdata = preds_2026, ylim = c(0, 8e9 / 1e3),
               realisations = TRUE)
-plot_mvgam_fc(m_gam_ar, newdata = preds_2026, ylim = c(0, 8e6 / 1e3))
-abline(v = 200, lty = "dashed")
-filter(preds_2026, time == 200)
+plot_mvgam_fc(m_gam_ar, newdata = preds_2026, ylim = c(0, 8e9 / 1e3))
+abline(v = 516, lty = "dashed")
+filter(preds_2026, time == 516)
 
-#' `plot(forecast(m_gam_ar, newdata = new_data))` fails with error:
-#' `arguments imply differing number of rows: 792, 852`
+#' `plot(forecast(m_gam_ar, newdata = preds_2026))` fails with error:
+#' `arguments imply differing number of rows: 780, 840`
 #' function is adding the test data twice: `nrow(data_test)` is 60
 
 #' **break**
@@ -220,14 +234,10 @@ predict(m_gam_ar, type = "response", process_error = TRUE) %>%
   plot_preds(scale = "response") +
   ylim(c(0, 410))
 
-# example with count data:
+# the different scales with count data:
 # - link: values are all real numbers (+ or -); scale is additive
-# - expected: values are > 0 (including decimals); scale is multiplicative
-# - response: values are > 0 (including decimals); scale is multiplicative
-# 
-# but note that:
-# - the mean can be any real number > 0 (including decimals)
-# - the predicted response values can only be integers > 0
+# - expected: values are > 0; scale is multiplicative
+# - response: values are > 0; scale is multiplicative
 
 #' link-scale partial effects are centered around 0
 #' allows to add intercept term to the partial effects
@@ -240,10 +250,10 @@ head(as.vector(forecast(m_gam_ar, type = "link")$forecasts$series1))
 #' expected-scale partial effects are centered around 1
 #' show the relative change in response with the predictor
 #' allows to multiply intercept term by the partial effects
-#' intercept = est. mean response, averaged across all smooths, on resp. scale
+#' intercept = est. mean response, averaged across all smooths, on expected scale
 draw(m_gam_ar$trend_mgcv_model, fun = exp) # relative change in passengers
 draw(m_gam_ar$trend_mgcv_model, # partial change in passengers
-     fun = \(x) exp(coef(m_gam_ar$trend_mgcv_model)["(Intercept)"]) * exp(x))
+     fun = \(y) exp(coef(m_gam_ar$trend_mgcv_model)["(Intercept)"]) * exp(y))
 plot(forecast(m_gam_ar, type = "expected"))
 head(as.vector(forecast(m_gam_ar, type = "expected")$forecasts$series1))
 
@@ -251,8 +261,7 @@ head(as.vector(forecast(m_gam_ar, type = "expected")$forecasts$series1))
 #'         actually on the expected scale, since they only include uncertainty
 #'         in the mean
 #'         in `{mvgam}`, predictions on the response scale include uncertainty
-#'         at the observation level, rather than just the mean, and the values
-#'         are always integers for count models
+#'         at the observation level, rather than just the mean
 plot(forecast(m_gam_ar, type = "response"))
 head(as.vector(forecast(m_gam_ar, type = "response")$forecasts$series1))
 
@@ -265,14 +274,12 @@ pp_check(m_gam_ar, type = "hist", ndraws = 8, bins = 10)
 pp_check(m_gam_ar, type = "dens_overlay", ndraws = 100)
 pp_check(m_gam_ar, type = "ecdf_overlay", ndraws = 100)
 
-pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "mean", binwidth = 1)
-pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "median", binwidth = 2.5)
-pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "sd", binwidth = 2.5)
-pp_check(m_gam_ar, type = "stat", ndraws = 10, stat = "var", binwidth = 250)
+pp_check(m_gam_ar, type = "stat", ndraws = 1000, stat = "mean", binwidth = 1)
+pp_check(m_gam_ar, type = "stat", ndraws = 1000, stat = "median", binwidth = 2.5)
+pp_check(m_gam_ar, type = "stat", ndraws = 1000, stat = "sd", binwidth = 2.5)
+pp_check(m_gam_ar, type = "stat", ndraws = 1000, stat = "var", binwidth = 250)
 
 pp_check(m_gam_ar, type = "stat_2d", ndraws = 1000, stat = c("mean", "sd"))
-
-#' **break**
 
 # comparing models ----
 layout(1:2)
@@ -314,10 +321,37 @@ plot_mvgam_fc(m_bad)
 plot_mvgam_fc(m_gam_ar)
 layout(1)
 
-loo_compare(m_gam_ar, m_bad) #' `m_bad` is clearly much worse
-loo_compare(m_gam_ar, m_gam) #' `m_gam_ar` performs better: 12 / 1.6 = 7.5 SEs
+#' expected log posterior density: `mean(log(lik(y|model)))`
+#' higher ELPD is better, but ELPD can be affected substantially by outliers
+#' `m_gam` is best
+#' `m_gam_ar` is worse
+#' `m_bad` is clearly much worse
+#' but ELPD can give too much importance to data in the tails because of it uses
+#' the logged likelihood
+#' as we'll see later, the score for `m_gam_ar` is penalized too much due to a
+#' single uncertain prediction with `k_psis > 0.7`
+#' `m_gam_ar` is actually the best model of the three
+loo_compare(m_gam_ar, m_bad, m_gam)
 
-# predicting from new data (no terms to predict for the bad model)
+#' can calculate ELPD quickly and easily with `{mvgam}`
+#' requires `type = "link"`
+score(forecast(m_gam_ar, type = "link"), score = "elpd")$series1 %>% head()
+
+tibble(
+  model_name = c("m_bad", "m_gam", "m_gam_ar"),
+  elpd_data = map(model_name, \(m_n) {
+    m <- get(m_n)
+    bind_cols(data_test,
+              score(forecast(m, type = "link"), score = "elpd")$series1)
+  })) %>%
+  unnest(elpd_data) %>%
+  rename(ELPD = score) %>%
+  ggplot(aes(eval_horizon, ELPD, color = model_name)) +
+  geom_line(lwd = 1) +
+  scale_color_highcontrast() +
+  theme(legend.position = "top")
+
+# predicting from new data (can't predict from bad model: no terms to plot!)
 plot_predictions(m_gam_ar, condition = "month", points = 0.5)
 plot_predictions(m_gam_ar, condition = "year", points = 0.5)
 
@@ -348,6 +382,8 @@ plot_slopes(m_gam_ar, variables = "month", by = "month", type = "response",
   geom_hline(yintercept = 0, linetype = "dashed") +
   coord_cartesian(ylim = c(-1000, 1000))
 
+#' **break**
+
 # assessing model fits with forecasts ----
 # measures for a good forecast:
 # - reliability: is able to predict unobserved data well
@@ -361,36 +397,125 @@ plot_slopes(m_gam_ar, variables = "month", by = "month", type = "response",
 # used to fit the model.
 # leave-future-out CV allows us to assess the model using future data that are
 # less correlated on the observed data.
+p_forecasts <- plot_grid(plot(forecast(m_bad)),
+                         plot(forecast(m_gam)),
+                         plot(forecast(m_gam_ar)),
+                         ncol = 1)
 
 # point-based forecast evaluation
-# 
-#' given a forecast horizon, H:
-#' - forecast error: `e = obs - pred` at a sufficiently distant future time
-#' - estimate the point-based measure:
-#'   - mean absolute error: `mean(abs(e))`
-#'   - mean squared error: `mean((e)^2)`; similar to variance
-#'   - root mean squared error: `sqrt(mean((e)^2))`; similar to SD
-#'   - mean abs % error: `100 * mean(abs(e / k)`; scale independent if `k > 0`
-#'     `k` can be observations or another benchmark. for more info:
-#'     https://www.youtube.com/watch?v=ek5xLEoQN3E
+#' forecast error: `e = obs - pred` at a sufficiently distant future time
+#' *NOTE:* forecasting at the response scale because that is what we observe
+forecasts <- tibble(
+  model_name = c("m_bad", "m_gam", "m_gam_ar"),
+  forecasts = map(model_name, \(m_n) {
+    m <- get(m_n)
+    mutate(data_test,
+           Estimate = predict(m, newdata = data_test, type = "response")[, 1],
+           e = passengers - Estimate)
+  })) %>%
+  unnest(forecasts)
+
+ggplot(forecasts, aes(time, e, color = model_name)) +
+  geom_hline(yintercept = 0, lty = "dashed") +
+  geom_line(lwd = 1) +
+  scale_color_highcontrast() +
+  theme(legend.position = "top")
+
+# the "bad" model predicts around the long-term mean: can't use the AR(1) model
+hist(unique(predict(m_bad, newdata = data_test, type = "response", )[, 1]))
+
+# averaged estimates: average across time series at different forecast horizons
+sim_ts <-
+  tibble(ts = 1:100,
+         sim = map(ts, function(i) {
+           data_test %>%
+             mutate(sim = i,
+                    passengers = rpois(n = n(), lambda = passengers))
+         })) %>%
+  unnest(sim) %>%
+  mutate(forecast_horizon = time - max(data_train$time)) %>%
+  nest(sims = everything()) %>%
+  expand_grid(
+    model_name = c("m_bad", "m_gam", "m_gam_ar")) %>%
+  mutate(forecasts = map2(model_name, sims, \(m_n, .d) {
+    m <- get(m_n)
+    bind_cols(.d, predict(m, newdata = .d, type = "response")) %>%
+      mutate(e = passengers - Estimate)
+  })) %>%
+  select(! sims) %>%
+  unnest(forecasts)
+
+ggplot(sim_ts) +
+  geom_line(aes(time, passengers, group = sim), alpha = 0.1) +
+  geom_line(aes(time, passengers), data_test, color = "darkorange", lwd = 0.5)
+
+pointwise_forecast_scores <-
+  sim_ts %>%
+  group_by(time, model_name) %>%
+  summarize(
+    #' mean absolute error
+    mae = mean(abs(e)),
+    #' mean squared error (similar to variance)
+    mse = mean(e^2),
+    #' - root mean squared error; similar to SD
+    rmse = sqrt(mse),
+    #' mean abs % error: `100 * mean(abs(e / k))`, where  `k` can be the
+    #' observation or another benchmark
+    #' for more info: https://www.youtube.com/watch?v=ek5xLEoQN3E
+    mape = 100 * mean(abs(e / passengers)),
+    .groups = "drop") %>%
+  pivot_longer(mae:mape, names_to = "metric") %>%
+  mutate(metric = toupper(metric))
+
+ggplot(pointwise_forecast_scores, aes(time, value, color = model_name)) +
+  facet_grid(metric ~ ., scales = "free_y", switch = "y") +
+  geom_line() +
+  labs(x = "Forecast horizon (months)", y = NULL) +
+  scale_color_highcontrast(name = "Model") +
+  theme(legend.position = "top", strip.placement = "outside",
+        strip.background = element_blank())
+
+p_forecasts # compare to forecast plots
 
 # interval-based forecast evaluation
-# the scaled interval score (SIS) evaluates forecasts based on deviation from
-# an interval of y (e.g., a credible interval)
-#' for more info, see: https://doi.org/10.1371/journal.pcbi.1008618
-calculate_sis <- function(u, l, alpha, y) {
-  sis <- case_when(l >= y & y <= u ~ u - l, # in the [l, u] interval
-                   y < l ~ u - l + 2 / alpha * (l - y), # below the interval
-                   y > u ~ u - l + 2 / alpha * (y - u)) # above the interval
+# the scaled interval score (SIS; https://doi.org/10.1198/016214506000001437 )
+# evaluates forecasts based on deviation from a (credible) interval of y
+#' `l`, `u` = lower and upper bounds of an interval
+#' `alpha` = 1 - interval coverage
+#' `y` = observation without measurement error
+calculate_sis <- function(l, u, alpha, y) {
+  case_when(y >= l & y <= u ~ u - l,
+            y < l           ~ u - l + (l - y) / (alpha / 2),
+            y > u           ~ u - l + (y - u) / (alpha / 2))
 }
+
+sim_ts <- sim_ts %>%
+  mutate(sis = calculate_sis(Q2.5, Q97.5, alpha = 0.05, y = passengers))
+
+interval_forecast_scores <-
+  sim_ts %>%
+  group_by(time, model_name) %>%
+  summarize(mean_sis = mean(sis), .groups = "drop")
+
+ggplot(interval_forecast_scores, aes(time, mean_sis, color = model_name)) +
+  geom_line() +
+  labs(x = "Forecast horizon (months)") +
+  scale_color_highcontrast(name = "Model") +
+  theme(legend.position = "top")
+
+p_forecasts # compare to forecast plots
+
+#' can calculate SIS quickly and easily with `{mvgam}`
+score(forecast(m_gam_ar), score = "sis")$series1 %>% head()
 
 # Probabilistic (i.e., distribution-based) forecast evaluation
 # 
-# rather than focusing on point-specific estimates of model performance, it's
-# better to look at the full forecast distribution rather than just a subset of
-# points
-# this is what we've been doing when comparing forecasts with DRPS/CRPS!
-# DRPS/CRPS: Discrete/Continuous Ranked Probability Score
+# rather than focusing on specific points or intervals, it's better to look at
+# the full forecast distribution of the forecast and account for the performance
+# of all parameters at once (even latent ones).
+# this is what we've been doing when comparing forecasts with DRPS/CRPS, the
+# Discrete/Continuous Ranked Probability Score
+#' for more info, see: https://doi.org/10.1371/journal.pcbi.1008618
 plot(forecast(m_gam_ar))
 
 # for example, we only observe some values from a distribution, but we can
@@ -405,32 +530,35 @@ d_probs <- tibble(y = seq(-4, 4, by = 0.01),
 
 d_obs <- filter(d_probs, sampled)
 
-# probability densities
-ggplot() +
-  geom_area(aes(y, dens), d_probs, fill = "grey", color = "black") +
-  geom_rug(aes(y), d_obs, lwd = 1, color = "red4") +
-  geom_segment(aes(x = y, xend = y, y = 0, yend = dens),
-               d_obs, color = "red4") +
-  geom_segment(aes(x = y, xend = -Inf, y = dens, yend = dens),
-               d_obs, color = "red4",
-               arrow = arrow(angle = 15, type = "closed")) +
-  ylab("Probability density")
-
-# log probability density
-ggplot() +
-  geom_area(aes(y, log_dens), d_probs, fill = "grey", color = "black") +
-  geom_rug(aes(y), d_obs, lwd = 1, color = "red4") +
-  geom_segment(aes(x = y, xend = y, y = 0, yend = log_dens),
-               d_obs, color = "red4") +
-  geom_segment(aes(x = y, xend = -Inf, y = log_dens, yend = log_dens),
-               d_obs, color = "red4",
-               arrow = arrow(angle = 15, type = "closed")) +
-  ylab("Log(probability density)")
+plot_grid(
+  # probability densities
+  ggplot() +
+    geom_area(aes(y, dens), d_probs, fill = "grey", color = "black") +
+    geom_rug(aes(y), d_obs, lwd = 1, color = "red4") +
+    geom_segment(aes(x = y, xend = y, y = 0, yend = dens),
+                 d_obs, color = "red4") +
+    geom_segment(aes(x = y, xend = -Inf, y = dens, yend = dens),
+                 d_obs, color = "red4",
+                 arrow = arrow(angle = 15, type = "closed")) +
+    ylab("Probability density"),
+  
+  # log probability density
+  ggplot() +
+    geom_area(aes(y, log_dens), d_probs, fill = "grey", color = "black") +
+    geom_rug(aes(y), d_obs, lwd = 1, color = "red4", sides = "t") +
+    geom_segment(aes(x = y, xend = y, y = 0, yend = log_dens),
+                 d_obs, color = "red4") +
+    geom_segment(aes(x = y, xend = -Inf, y = log_dens, yend = log_dens),
+                 d_obs, color = "red4",
+                 arrow = arrow(angle = 15, type = "closed")) +
+    ylab("Log(probability density)"),
+  ncol = 1)
 
 # taking log(density):
 # - helps keep numbers more manageable
 # - moves operations to the additive scale
-# - can be sensitive to outliers (i.e., very negative log(density))
+# - is sensitive to outliers (i.e., very negative log(density), like with ELPD)
+# - requires distributional/parametric assumptions
 
 # Continuous Ranked Probability Score
 # "-1" forces a flip in the pdf, making the observation the MLE value
@@ -455,12 +583,18 @@ score(forecast(m_gam_ar))$all_series %>% head()
 
 # DRPS produces same values since P(Y = x) = 0 at non-integer values of x
 score(forecast(m_gam_ar), score = "drps")$series1 %>% head()
-score(forecast(m_gam_ar), score = "drps")$all_series %>% head()
+score(forecast(m_gam_ar), score = "crps")$series1 %>% head()
 
-#' Expected log predictive density, as used in `loo_compare()`
-score(forecast(m_gam_ar, type = "link"), score = "elpd")$series1 %>% head()
+dprs_scores <- tibble(
+  model_name = c("m_bad", "m_gam", "m_gam_ar"),
+  dprs_tib = map(model_name, \(m_n) {
+    mutate(data_test,
+           DPRS = score(forecast(get(m_n)), score = "drps")$series1$score)
+  })) %>%
+  unnest(dprs_tib)
 
-# averaging SIS values across many intervals will converge to DPRS/CPRS values
-score(forecast(m_gam_ar), score = "sis")$series1 %>% head()
-score(forecast(m_gam_ar), score = "sis", interval_width = 0.5)$series1 %>% head()
-score(forecast(m_gam_ar), score = "sis")$all_series %>% head()
+ggplot(dprs_scores, aes(time, DPRS, color = model_name)) +
+  geom_line() +
+  labs(x = "Forecast horizon (months)") +
+  scale_color_highcontrast(name = "Model") +
+  theme(legend.position = "top")
