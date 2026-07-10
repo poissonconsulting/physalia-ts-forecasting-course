@@ -348,6 +348,7 @@ tibble(
   rename(ELPD = score) %>%
   ggplot(aes(eval_horizon, ELPD, color = model_name)) +
   geom_line(lwd = 1) +
+  xlab("Forecast horizon (months)") +
   scale_color_highcontrast() +
   theme(legend.position = "top")
 
@@ -397,10 +398,11 @@ plot_slopes(m_gam_ar, variables = "month", by = "month", type = "response",
 # used to fit the model.
 # leave-future-out CV allows us to assess the model using future data that are
 # less correlated on the observed data.
-p_forecasts <- plot_grid(plot(forecast(m_bad)),
-                         plot(forecast(m_gam)),
-                         plot(forecast(m_gam_ar)),
+p_forecasts <- plot_grid(plot(forecast(m_bad)) + ggtitle("m_bad"),
+                         plot(forecast(m_gam)) + ggtitle("m_gam"),
+                         plot(forecast(m_gam_ar)) + ggtitle("m_gam_ar"),
                          ncol = 1)
+p_forecasts
 
 # point-based forecast evaluation
 #' forecast error: `e = obs - pred` at a sufficiently distant future time
@@ -419,10 +421,8 @@ ggplot(forecasts, aes(time, e, color = model_name)) +
   geom_hline(yintercept = 0, lty = "dashed") +
   geom_line(lwd = 1) +
   scale_color_highcontrast() +
+  labs(x = "Forecast horizon (months)", y = "Observed - Predicted") +
   theme(legend.position = "top")
-
-# the "bad" model predicts around the long-term mean: can't use the AR(1) model
-hist(unique(predict(m_bad, newdata = data_test, type = "response", )[, 1]))
 
 # averaged estimates: average across time series at different forecast horizons
 sim_ts <-
@@ -499,7 +499,7 @@ interval_forecast_scores <-
 
 ggplot(interval_forecast_scores, aes(time, mean_sis, color = model_name)) +
   geom_line() +
-  labs(x = "Forecast horizon (months)") +
+  labs(x = "Forecast horizon (months)", y = "Mean SIS") +
   scale_color_highcontrast(name = "Model") +
   theme(legend.position = "top")
 
@@ -589,11 +589,11 @@ dprs_scores <- tibble(
   model_name = c("m_bad", "m_gam", "m_gam_ar"),
   dprs_tib = map(model_name, \(m_n) {
     mutate(data_test,
-           DPRS = score(forecast(get(m_n)), score = "drps")$series1$score)
+           DRPS = score(forecast(get(m_n)), score = "drps")$series1$score)
   })) %>%
   unnest(dprs_tib)
 
-ggplot(dprs_scores, aes(time, DPRS, color = model_name)) +
+ggplot(dprs_scores, aes(time, DRPS, color = model_name)) +
   geom_line() +
   labs(x = "Forecast horizon (months)") +
   scale_color_highcontrast(name = "Model") +
