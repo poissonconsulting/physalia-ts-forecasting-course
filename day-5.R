@@ -59,7 +59,8 @@ ggplot(tourism_tbl, aes(q_date, Trips, group = Region, color = Purpose)) +
   facet_grid(State ~ Purpose) +
   geom_line() +
   scale_color_bright() +
-  xlab("Year")
+  xlab("Year") +
+  theme(legend.position = "none")
 
 ggplot(tourism_tbl, aes(q, Trips, group = paste(year, Region), color = year)) +
   facet_grid(State ~ Purpose) +
