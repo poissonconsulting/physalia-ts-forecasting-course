@@ -2,11 +2,11 @@ source("packages.R") # attach necessary packages
 
 #' recap:
 #' - ARMA and CAR models help deal with autocorrelation in data and residuals
-#' - CAR models are a continuous-time version of AR models
 #' - GAM's smooth terms are a continuous version of random effects
 #' - to estimate change, data should have 3+ observations per period of interest
 #' - state space models separate the observation process from the latent process
-#' - forecasting models are best assessed using out-of-sample prediction
+#' - forecasting models are best assessed using out-of-sample prediction, and
+#'   with distributional scores such as DRPS and CRPS
 
 #' today's topics:
 #' - multivariate ecological time series
@@ -92,7 +92,7 @@ ggplot(mapping = aes(year, diatox, color = core)) +
   ylim(c(0, NA))
 
 # fit a null model
-m_null <- mvgam(formula = diatox ~ core,
+m_null <- mvgam(formula = diatox ~ s(core, bs = "re"),
                 family = Gamma(link = "log"),
                 data = d_train,
                 newdata = d_test,
@@ -111,7 +111,7 @@ plot_grid(plot(forecast(m_null), series = 1),
 
 # fit a hierarchical GAM
 #' https://doi.org/10.7717/peerj.6876/fig-4
-m_gam <- mvgam(formula = diatox ~ core + s(year, core, bs = "fs", k = 10),
+m_gam <- mvgam(formula = diatox ~ s(year, core, bs = "fs", k = 10),
                family = Gamma(link = "log"),
                data = d_train,
                newdata = d_test,
@@ -146,9 +146,6 @@ m_gam_ar1 <- mvgam(formula = diatox ~ s(year, core, bs = "fs", k = 10),
 
 summary(m_gam_ar1) # no issues with diagnostics
 plot(m_gam_ar1) # no appreciable autocorrelation at lag 1
-plot_grid(draw(m_gam$mgcv_model), # notice the small wiggles
-          draw(m_gam_ar1$mgcv_model), #' terms are smoother than for `m_gam`
-          ncol = 1)
 
 #' credible intervals are wider than with `m_gam`, esp. between data points
 #' but trends in `m_gam_ar1` are more jagged
@@ -169,12 +166,10 @@ plot_grid(plot(forecast(m_gam_ar1), series = 1),
           plot(forecast(m_gam_ar1), series = 3),
           plot(forecast(m_gam_ar1), series = 4))
 
-#' **break**
-
 # vector autoregressive processes ----
 #' y values are correlated in time; use correlated `AR(1)` processes: `VAR(1)`
 #' `VAR(1)` processes allow us to:
-#' - predict missing observations d using AR processes from other series
+#' - predict missing observations using AR processes from other series
 #' - predict "pulses" that may not be estimable efficiently with scarce data
 #' - model proxies efficiently if they are more convenient to monitor
 #' 
@@ -183,7 +178,7 @@ plot_grid(plot(forecast(m_gam_ar1), series = 1),
 #' - `y_t` is the vector with length `s` of observations at time `t`,
 #' - `y_{t-1}` is the vector of `s` observations at time `t-1`,
 #' - `A` is the `s * s` matrix of correlations for `y_t` and `y_{t-1}` values,
-#' - `Σ` is the covariance matrix that determines the correlation across errors
+#' - `Σ` is the covariance matrix that determines the correlation across values
 #' can safely ignore messages about rejections of initial values
 #' for more info: nicholasjclark.github.io/mvgam/articles/trend_formulas.html
 
@@ -208,13 +203,13 @@ ggplot(d_train, aes(year, z_log)) +
   geom_point() +
   geom_point(data = d_test, pch = 4)
 
-# fits in ~ 2-3 minutes
+#' *fits in ~ 5 minutes*
 #' drop intercepts to avoid non-identifiability issues (`noncentered = FALSE`)
 #' trying to fit the model with a Gamma distribution results in horrible chains
 m_gam_var1 <- mvgam(formula = z_log ~ 0 + s(year, core, bs = "fs", k = 10),
                     trend_model = VAR(1, cor = TRUE), # vector AR(1) process
                     noncentred = FALSE, # cannot use if using for VAR() models
-                    family = gaussian(), # since we centered the data
+                    family = student_t(), # since we centered the data
                     data = d_train,
                     newdata = d_test,
                     chains = 4,
@@ -229,7 +224,7 @@ summary(m_gam_var1)
 matrix(summary(m_gam_var1)$parameters$var_coefficient_matrix[, "50%"],
        ncol = 4, byrow = TRUE)
 
-plot(m_gam_var1) # no appreciable issues with ACF or pACF
+plot(m_gam_var1) # no appreciable issues with ACF or pACF, but overdispersed
 draw(m_gam_var1$mgcv_model)
 
 plot_grid(plot(m_gam_var1, type = "trend", series = 1),
@@ -244,7 +239,6 @@ plot_grid(plot(forecast(m_gam_var1), series = 1),
           plot(forecast(m_gam_var1), series = 4))
 
 # predictions require back-transformation, and the CI for core 1 is unreliable
-# also, estimated means are the geometric mean because of the log-transform
 phi_tbl <-
   tibble(core = paste("Core", 1:4),
          phi = summary(m_gam_var1)$parameters$standard_deviation[, "50%"])
@@ -267,6 +261,8 @@ pigments %>%
   geom_line(aes(year, Estimate)) +
   geom_vline(xintercept = 1950, lty= "dashed")
 
+#' **break**
+
 # dynamic factor models ----
 #' - a dynamic factor (DF) are latent time series
 #' - DF loadings are coefficients that relate DFs to observed time series
@@ -276,7 +272,7 @@ pigments %>%
 #'   - `y_t` is a vector of observations at time `t`,
 #'   - `z_t` is a vector of dynamic factor estimates at time `t`,
 #'   - `θ` is a matrix of loading coefficients that controls how each series in
-#'     `y` depends on the `z` dyamic factors (i.e., dimension-reduced ts)
+#'     `y` depends on the `z` dynamic factors (i.e., dimension-reduced ts)
 #' - factor: 
 #' for more info, see:
 #' - https://atsa-es.github.io/atsa2017/Labs/Week%206%20dynamic%20factor%20analysis/Intro_to_DFA.html
@@ -316,7 +312,7 @@ plot_grid(plot(forecast(m_df), series = 1),
 
 # add a GAM term (fits faster because it converges better)
 m_gam_df <- mvgam(formula = diatox ~ s(year, core, bs = "fs", k = 10),
-                  use_lv = TRUE, n_lv = 4,
+                  use_lv = TRUE, n_lv = 2,
                   trend_model = AR(1),
                   noncentred = FALSE, #' since `trend_formula` is not empty
                   family = Gamma(link = "log"),
@@ -330,7 +326,8 @@ m_gam_df <- mvgam(formula = diatox ~ s(year, core, bs = "fs", k = 10),
 
 summary(m_gam_df) # no issues with diagnostics
 plot(m_gam_df) # no appreciable autocorrelations
-draw(m_gam_df$mgcv_model) # terms are again quite smooth
+draw(m_gam_df$mgcv_model) # terms are quite smooth
+draw(m_gam$mgcv_model)
 
 # trend terms now change less over time because smooth terms account for change
 plot_grid(plot(m_gam_df, type = "trend", series = 1),
@@ -338,7 +335,12 @@ plot_grid(plot(m_gam_df, type = "trend", series = 1),
           plot(m_gam_df, type = "trend", series = 3),
           plot(m_gam_df, type = "trend", series = 4))
 
-# predictions aren't too bad
+plot_grid(plot(m_df, type = "trend", series = 1),
+          plot(m_df, type = "trend", series = 2),
+          plot(m_df, type = "trend", series = 3),
+          plot(m_df, type = "trend", series = 4))
+
+# forecasts aren't too bad
 plot_grid(plot(forecast(m_gam_df), series = 1),
           plot(forecast(m_gam_df), series = 2),
           plot(forecast(m_gam_df), series = 3),
@@ -366,11 +368,11 @@ loo_compare(m_null, m_gam, m_gam_ar1, m_gam_var1, m_df, m_gam_df)
 
 # the Energy Score generalizes the continuous ranked probability score to
 # multivariate forecasts
-#' `ES(F, y) = mean(norm(F_i − y)) − mean(norm(F_i − F_j))`,
+#' `ES(F, y) = (mean(Enorm(F_i − y))) − (mean(Enorm(F_i − F_j)))`,
 #' where:
 #' - `F` is a vector of `m` forecasts with elements indicated by `F_i` and `F_j`,
 #' - `y` is a vector of future observations for the corresponding `m` times,
-#' - `norm(k)` indicates the length or Euclidean norm of a vector, and
+#' - `Enorm(k)` indicates the length or Euclidean norm of a vector, and
 #' - `mean(F_i − F_j) = 1 / (2 * m^2) * sum(F_i − F_j)`.
 #' A lower energy score is better: it indicates less deviation from the data.
 #' 
@@ -378,7 +380,10 @@ loo_compare(m_null, m_gam, m_gam_ar1, m_gam_var1, m_df, m_gam_df)
 #' forecasts and the distribution of the observations
 #' 
 #' useful for generalizing CPRS but maintaining a simple structure while also
-#' accounting for sharpness and calibration
+#' accounting for:
+#' - sharpness (i.e., concentration of the forecasts, inverse of uncertainty), &
+#' - calibration (i.e., consistency between forecasts and observed data)
+#' https://sites.stat.washington.edu/raftery/Research/PDF/Gneiting2007jrssb.pdf
 #' 
 #' however, does not account for correlations in the test data that were absent
 #' in the training data
@@ -397,6 +402,7 @@ loo_compare(m_null, m_gam, m_gam_ar1, m_gam_var1, m_df, m_gam_df)
 #' but it relies on a summary (`F'`) of the forecasts for a given time, so it
 #' does not account for forecast sharpness or calibration
 
+# extending penalties for better forecasts ---- 
 # AR, VAR, and DFA models only account for stochastic component
 # we can extend the penalty for the GAM using b-splines
 # but we need separate smooths for each core because fs terms can't use bs bases
@@ -406,7 +412,7 @@ loo_compare(m_null, m_gam, m_gam_ar1, m_gam_var1, m_df, m_gam_df)
 #' using `by` smooths because `fs` smooths don't support `bs` basis
 m_gam_ar1_bs <- mvgam(formula = diatox ~
                         core + #' `by` smooths require explicit intercepts
-                        s(year, by = core, bs = "bs", m = c(3, 2), k = 10),
+                        s(year, by = core, bs = "bs", m = c(3, 1), k = 10),
                       knots = list(year = c(1800, 2010)),
                       trend_model = AR(1), # autoregressive 1 process
                       noncentred = TRUE,
@@ -428,8 +434,8 @@ plot_grid(plot(m_gam_ar1_bs, type = "trend", series = 1),
           plot(m_gam_ar1_bs, type = "trend", series = 3),
           plot(m_gam_ar1_bs, type = "trend", series = 4))
 
-# predictions are worse than other models because they depend on assumptions of
-# how the penalty carries forward. we penalized deviations from the curvature
+# predictions are better than other models when we have correct assumptions of
+# how the penalty carries forward. we penalized deviations from the slope
 plot_grid(plot(forecast(m_gam_ar1_bs), series = 1),
           plot(forecast(m_gam_ar1_bs), series = 2),
           plot(forecast(m_gam_ar1_bs), series = 3),
@@ -455,8 +461,8 @@ models <-
              variogram_score = score(.f, score = "variogram")$all_series$score)
          }))
 
-# lower energy and variogram scores are better: less deviation from data
-# cannot compare the GAM with VAR(1) because it used transformed data
+#' lower energy and variogram scores are better: less deviation from data
+#' *NOTE*: cannot compare the GAM with VAR(1) because it used transformed data
 models %>%
   select(name, scores) %>%
   unnest(scores) %>%
@@ -470,3 +476,8 @@ models %>%
   geom_smooth(method = "gam", formula = y ~ s(x), se = FALSE) +
   scale_color_bright(name = "Model") +
   scale_fill_bright(name = "Model")
+
+# extra material if time permits:
+# - https://ctmm-initiative.github.io/ctmm/articles/variogram.html
+# - https://www.ab.mpg.de/518835/ctmm-1_IntroductionToContinousTimeMovementModelling.pdf
+# - https://link.springer.com/article/10.1186/s40462-019-0177-1
