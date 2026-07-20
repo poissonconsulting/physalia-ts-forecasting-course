@@ -271,13 +271,13 @@ plot_process(ar = c(0.7, 0.3), ma = c(0.5, 0.3)) # non-stationary ARMA(2, 2)
 # applying the plots to the air temperature series ----
 p_temp # what counts as a "change of interest"?
 
-layout(t(1:2))
+layout(1:2)
 acf(d_temp$temp) #' correlation of data pairs at a times `t` and `t+Lag`
 pacf(d_temp$temp) #' correl. between pairs, without previous lags' effects
 # ACF decays smoothly; high pacf value at lag 1, other values are small
 # AR(1) model is a good start
 
-#' `y_t = 77.33 + 0.82 * (y_{t-1} - 77.33) + e_t`
+#' `y_t = 77.30 + 0.82 * (y_{t-1} - 77.30) + e_t`
 m_ar_temp <- arima(d_temp$temp, order = c(1, 0, 0))
 coef(m_ar_temp)
 acf(resid(m_ar_temp)); pacf(resid(m_ar_temp)) # residuals are ok
@@ -386,6 +386,8 @@ d_track %>%
   scale_x_continuous(name = "x (meters)", breaks = (-3:3) * 100) +
   ylab("y (meters)")
 
+#' **break**
+
 # GLMs and GAMs for ecological modelling ----
 
 #' three main parts to a GLM/GAM:
@@ -425,7 +427,7 @@ d_track %>%
 #' *choose a link function based on the possible values for the distribution*
 #' unbounded: identity; `I(-Inf, Inf) = (-Inf, Inf)`
 #' `Y >= 0` or `Y > 0`: `log(0, Inf) = (-Inf, Inf)`
-#' `0 <= Y <= 1`: `logit(0, 1) = log(odds(0, 1)) = log(0,Inf) = (-Inf,Inf)`
+#' `0 <= Y <= 1`: `logit(0, 1) = log(odds(0, 1)) = log(0, Inf) = (-Inf, Inf)`
 #' there are other options, but these are generally sufficient (esp. with GAMs)
 
 #' *note:* link functions introduce two new terms:
@@ -456,7 +458,7 @@ ggplot(d_temp, aes(date, temp)) +
 #' ..- https://www.youtube.com/watch?v=ztbYkBPDOgU
 #' 
 #' can get priors from `get_mvgam_priors()` without fitting a model
-#' ensure to specify family and link scale so coefficients on the right scale
+#' ensure to specify family and link function so coefficients on the right scale
 get_mvgam_priors(temp ~ doy, data = d_temp, family = gaussian())
 #' uses `brms::get_prior()` to generate uninformative priors
 
@@ -521,7 +523,7 @@ ggplot() +
 #' leveraging Hamiltonian dynamics (i.e., physics laws of movement and energy).
 #' 
 #' warmup phase:
-#' 0. choose a starting point based **FIX THIS** or the given initial values
+#' 0. choose a starting point based on the given initial values
 #' 1. "push the marble": sample a value from the momentum distribution, `N(0, M)`
 #' 2. take a series of steps based on the momentum, stopping if you make a
 #'    U-turn, to avoid backtracking and sampling inefficiently
