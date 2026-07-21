@@ -21,7 +21,14 @@ source("gaussian-process-functions.R") # for plotting GP covariance function
 #' The terms can't be functions of each other, so we need to add columns of the
 #' polynomial that are independent of each other (i.e., orthogonal) to avoid
 #' complete collinearity and non-identifiability issues when fitting.
-d_temp <- d_temp %>%
+d_temp <- airquality %>%
+  rename_with(stringr::str_to_snake, everything()) %>% # convert to snake_case
+  mutate(date = as_date(paste0("1973-", month, "-", day)),
+         doy = yday(date),
+         week_re = factor(week(date)),
+         time = order(date)) %>% #' required for `trend_model` in `mvgam()`
+  select(temp, month, date, doy, week_re, time) %>%
+  as_tibble() %>%
   bind_cols(.,
             poly(.$doy, degree = 3) %>%
               as.data.frame() %>%
@@ -67,8 +74,6 @@ range(d_temp$doy_1); range(d_temp$doy_2); range(d_temp$doy_3)
 m_temp_poly <- mvgam(temp ~ doy_1 + doy_2 + doy_3,
                      family = gaussian(),
                      data = d_temp, samples = 1000, burnin = 1000)
-
-#' *HERE*
 
 #' since `{mvgam}` fits Bayesian models with `Stan`, we should check that all
 #' chains converged properly: check `Rhat`, `n_eff`, and Stan MCMC diagnostics
@@ -210,7 +215,7 @@ m_temp_ar <- mvgam(formula = temp ~ s(doy, k = 10, bs = "cr"),
 # there seem to be two alternative fits the model is trying to decide between
 mcmc_plot(m_temp_ar, type = "trace")
 # chains are not well mixed: conflicting coefficients
-mcmc_plot(m_temp_ar, type = "trace_highlight", highlight = 2)
+mcmc_plot(m_temp_ar, type = "trace_highlight", highlight = 3)
 summary(m_temp_ar) # Rhat can be deceiving
 plot(m_temp_ar) # no appreciable correlations at any lags
 # uncertainty at greater lags is because of missing data
@@ -226,6 +231,8 @@ plot_mvgam_fc(m_temp_gam)
 plot_mvgam_fc(m_temp_ar)
 plot(m_temp_ar, type = "smooth")
 plot(m_temp_ar, type = "trend")
+
+#' *break*
 
 # SSMs ----
 #' *State space models*
@@ -289,7 +296,7 @@ data_test <- filter(air_passengers, year >= 1958)
 #' fit a simple gam with `dec_date`
 #' *NOTE:* fitting times are a lot slower if `passengers` is multiplied by 1000
 m_gam <- mvgam(formula = passengers ~ s(dec_date, k = 30),
-               family = poisson(),
+               family = poisson(link = "log"),
                data = data_train,
                newdata = data_test,
                chains = 4,
@@ -412,7 +419,7 @@ plot(m_gam_month)
 # (2) residuals are independent once we account for the model (including
 # previous values of y)
 # for more info, see:
-# - Auger-Méthé et al. (2021; https://doi.org/10.1002/ecm.1470)
+# - Auger-Méthé et al. (2021; https://doi.org/10.1002/ecm.1470 )
 # - https://nicholasjclark.github.io/mvgam/articles/trend_formulas.html
 
 # fit a GAM with an AR(1) process
@@ -459,7 +466,7 @@ data_test_12 <- air_passengers %>%
   filter(year >= 1958, ! is.na(lag_12_passengers))
 
 # add a term to crudely account for a 12-month autocorrelation
-# fits in ~100 seconds
+# fits in ~20 seconds
 m_gam_ar_12 <- mvgam(formula = passengers ~ 0,
                      trend_formula = ~
                        s(year, k = 8, bs = "tp") +
