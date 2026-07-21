@@ -424,12 +424,11 @@ plot(m_gam_month)
 
 # fit a GAM with an AR(1) process
 #' the `m_gam_ar` model is:
-#' `passengers ∼ Poisson(λ_t)`            # observation
-#' `log(λ_t) = l_t`                       # trend of mean obs on log scale
-#' `l_t = b_0 + s(year) + s(month) + z_t` # latent process trend varies w time
-#' `z_t ∼ Normal(l_{t−1} * a, σ)`         # latent stoch. component on log scale
+#' `passengers ∼ Poisson(λ_t)`       # observation
+#' `log(λ_t) = l_t + z_t`            # trend of mean obs on log scale
+#' `l_t = b_0 + s(year) + s(month)`  # latent process trend varies w time
+#' `z_t ∼ Normal(z_{t−1} * a, σ)`    # latent stochastic component on log scale
 #' where `a` is the coefficient of the `AR(1)` process
-#' note: `log(λ_t) = l_t` implies mean observations are the true state
 m_gam_ar <- mvgam(formula = passengers ~ 0,
                   trend_formula = ~
                     s(year, k = 9, bs = "tp") +
@@ -642,11 +641,10 @@ draw(m_diatox_0$mgcv_model, n = 200)
 #' add a `CAR(1)` term to account for continuous-time autocorrelation
 #' the model is:
 #' `diatox ∼ Gamma(mu_t, theta)`        # observation
-#' `log(mu_t) = s(year) + l_t`          # trend of mean obs on log scale
-#' `l_t = 0 + z_t`                      # latent process trend varies w time
+#' `log(mu_t) = s(year) + l_t + z_t`    # trend of mean obs on log scale
+#' `l_t = 0`                            # latent process trend varies w time
 #' `z_t ∼ Normal(z_{t−dt} * a^{dt}, σ)` # latent stochastic component
 #' where `0 < a < 1` is the coef of the `CAR(1)` process for time difference `dt`
-#' note: `log(λ_t) = l_t` implies mean observations are the true state
 #' 
 #' note: when `dt = 1`, the model becomes a simple `AR(1)` process:
 #' `E(z_t) = z_{t−dt} * a^{dt} = z_{t−1} * a^1 = z_{t−1} * a`
