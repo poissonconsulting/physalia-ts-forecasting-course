@@ -1,4 +1,5 @@
 source("packages.R") # attach necessary packages
+source("gaussian-process-functions.R")
 
 #' recap:
 #' - ARIMA models:
@@ -139,7 +140,6 @@ mcmc_plot(m_diatox_car, type = "trace", variable = ".", regex = TRUE) # good
 plot_predictions(m_diatox_car, "year") #' `s(year)` is very smooth...
 plot(hindcast(m_diatox_car)) # predictions with data points are not smooth...
 
-
 # posterior predictive checks: very high uncertainty
 pp_check(m_diatox_car, "dens_overlay", ndraws = 100)
 pp_check(m_diatox_car, "ecdf_overlay", ndraws = 100)
@@ -147,7 +147,7 @@ pp_check(m_diatox_car, "intervals") # misses the spike entirely
 pp_check(m_diatox_car, "ribbon")
 pp_check(m_diatox_car, "error_scatter_avg") # error is proportional to y
 pp_check(m_diatox_car, "scatter_avg") # spike is clearly visible
-mvgam::plot_mvgam_trend(m_diatox_car) # CAR(1) process
+plot_mvgam_trend(m_diatox_car) # CAR(1) process
 pp_check(m_diatox_car, "resid_ribbon") # residuals are uncorrelated after CAR(1)
 
 # why is the year term so smooth and uncertain?
@@ -200,8 +200,6 @@ mcmc_plot(m_diatox_car_ad, type = "intervals", variable = ".", regex = TRUE)
 
 # get methods quickly with citations (you need to add the model terms)
 how_to_cite(m_diatox_car_ad)
-
-#' **break**
 
 # Gaussian Processes ----
 #' for more info, see katbailey.github.io/post/gaussian-processes-for-dummies
@@ -347,7 +345,9 @@ as.data.frame(m_diatox_gp, variable = "gp_", regex = TRUE) %>%
 #' - may be scaled so that the maximum euclidean distance between points is 1     
 #' `alpha`: marginal variability; similar to variance in vertical direction
 
-# Dynamic coefficient models (if time permits) ----
+#' *break*
+
+# Dynamic coefficient models ----
 #' the GP term above can be seen as the change in the intercept term over time,
 #' i.e., an interaction between time and the intercept. We can also use GPs to
 #' create interactions of a slope over time, which gives us dynamic coefficient
@@ -504,7 +504,7 @@ expand_grid(
 #' dynamic coefficient models in `{mgcv}`
 #' in `{mgcv}`, you can fit the term using `s(year, by = percent_n)`, or, more
 #' specifically `s(year, by = percent_n, bs = "gp")`
-m_diatox_pn_ti$mgcv_model
+m_diatox_pn$mgcv_model
 #' in `{brms}`, you can also fit the term using `gp(year, by = percent_n, ...)`
 
 # forecasting from dynamic models ----
@@ -580,6 +580,7 @@ m_gam_ar <- mvgam(formula = passengers ~ 0, # no error in observation process
 
 plot(m_gam_ar)
 summary(m_gam_ar) # check diagnostics
+mcmc_plot(m_gam_ar, type = "trace", variable = ".", regex = TRUE)
 
 # plot diagnostics
 # one point is slightly problematic
@@ -630,7 +631,7 @@ plot(m_gam_ar, type = "smooths", realisations = TRUE, n_realisations = 10,
 plot(m_gam_ar, type = "forecast")
 plot(m_gam_ar, type = "trend") +
   geom_vline(xintercept = nrow(data_train), lty = "dashed")
-plot(m_gam_ar, type = "smooths", trend_effects = TRUE)
+plot(m_gam_ar, type = "smooths", trend_effects = TRUE, )
 
 # generate forecasts for up to end of 2026
 # predicting later is useful if data are not available or too large to add
@@ -670,8 +671,6 @@ filter(preds_2026, time == 516)
 #' `plot(forecast(m_gam_ar, newdata = preds_2026))` fails with error:
 #' `arguments imply differing number of rows: 780, 840`
 #' function is adding the test data twice: `nrow(data_test)` is 60
-
-#' **break**
 
 # interpreting predictions ----
 summary(m_gam_ar)
@@ -730,7 +729,8 @@ head(as.vector(forecast(m_gam_ar, type = "link")$forecasts$series1))
 #' intercept = est. mean response, averaged across all smooths, on expected scale
 draw(m_gam_ar$trend_mgcv_model, fun = exp) # relative change in passengers
 draw(m_gam_ar$trend_mgcv_model, # partial change in passengers
-     fun = \(y) exp(coef(m_gam_ar$trend_mgcv_model)["(Intercept)"]) * exp(y))
+     fun = \(y) exp(coef(m_gam_ar$trend_mgcv_model)["(Intercept)"]) *
+       exp(y))
 plot(forecast(m_gam_ar, type = "expected"))
 head(as.vector(forecast(m_gam_ar, type = "expected")$forecasts$series1))
 
@@ -768,7 +768,6 @@ m_bad <- mvgam(formula = passengers ~ 0,
                trend_formula = ~ 1,
                trend_model = AR(p = 1), # AR(1) model
                noncentred = TRUE, # use a noncentered AR(1) model
-               knots = list(month = c(0.5, 12.5)),
                family = poisson(link = "log"),
                data = data_train, # calculate forecast while fitting
                newdata = data_test,
