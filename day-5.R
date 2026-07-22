@@ -4,6 +4,16 @@ library('tsibble') #' to read in quarters correctly for `tourism_tbl_ts` below
 
 #' Extended practical examples using `{mvgam}`
 #' more good datasets included in `good-datasets.R`
+#' other potential topics:
+#' - simulating some time series data with latent variables and censoring:
+#'   - "thunderstorms cause rodents to hide"
+#'   - "thunderstorms cause earthworms to emerge"
+#'   - "what if the thunderstorms were unobserved?"
+#' - applications of time series models in animal movement ecology:
+#'   - OU models are similar to a two-dimensional CAR(1) models of position
+#'   - estimating continuous-time speed from GPS data
+#'   - importance of fine-scale data in (movement) time series:
+#'     https://www.science.org/doi/10.1126/science.abg1780
 
 # hourly pedestrian counts ----
 ped <- timeSeriesDataSets::pedestrian_tbl_ts %>%
