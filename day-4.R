@@ -137,7 +137,7 @@ sim_ts <-
 
 ggplot(sim_ts) +
   geom_line(aes(time, passengers, group = sim), alpha = 0.1) +
-  geom_line(aes(time, passengers), data_test, color = "darkorange", lwd = 0.5)
+  geom_line(aes(time, passengers), data_test, color = "darkorange", lwd = 1)
 
 pointwise_forecast_scores <-
   sim_ts %>%
@@ -178,7 +178,7 @@ calculate_sis <- function(l, u, alpha, y) {
             y < l           ~ u - l + (l - y) / (alpha / 2),
             y > u           ~ u - l + (y - u) / (alpha / 2))
 }
-
+xf
 sim_ts <- sim_ts %>%
   mutate(sis = calculate_sis(Q2.5, Q97.5, alpha = 0.05, y = passengers))
 
@@ -289,6 +289,9 @@ ggplot(dprs_scores, aes(time, DRPS, color = model_name)) +
   scale_color_highcontrast(name = "Model") +
   theme(legend.position = "top")
 
+#' *break*
+
+# modelling multiple time series ----
 # multiple cores from the same lake: multiple time series for the same pigments
 #' core locations: https://onlinelibrary.wiley.com/cms/asset/a02d5fe1-044e-4dd2-b50c-ff33f328d953/fwb14192-fig-0001-m.jpg
 SAMPLING_DATE <- lubridate::decimal_date(as.POSIXlt("2014-04-01"))
@@ -452,7 +455,7 @@ plot_grid(plot(forecast(m_gam_ar1), series = 1),
 #' - we have `s` series,
 #' - `y_t` is the vector with length `s` of observations at time `t`,
 #' - `y_{t-1}` is the vector of `s` observations at time `t-1`,
-#' - `A` is the `s * s` matrix of correlations for `y_t` and `y_{t-1}` values,
+#' - `A` is the `s * s` matrix of autocorrelations for `y_t` and `y_{t-1}` values,
 #' - `Σ` is the covariance matrix that determines the correlation across values
 #' can safely ignore messages about rejections of initial values
 #' for more info: nicholasjclark.github.io/mvgam/articles/trend_formulas.html
@@ -535,8 +538,6 @@ pigments %>%
   geom_point(aes(year, diatox), alpha = 0.5) +
   geom_line(aes(year, Estimate)) +
   geom_vline(xintercept = 1950, lty= "dashed")
-
-#' **break**
 
 # dynamic factor models ----
 #' - a dynamic factor (DF) are latent time series
@@ -646,7 +647,7 @@ loo_compare(m_null, m_gam, m_gam_ar1, m_gam_var1, m_df, m_gam_df)
 #' `ES(F, y) = (mean(Enorm(F_i − y))) − (mean(Enorm(F_i − F_j)))`,
 #' where:
 #' - `F` is a vector of `m` forecasts with elements indicated by `F_i` and `F_j`,
-#' - `y` is a vector of future observations for the corresponding `m` times,
+#' - `y` is a vector of future observations for the corresponding `m` timeseries,
 #' - `Enorm(k)` indicates the length or Euclidean norm of a vector, and
 #' - `mean(F_i − F_j) = 1 / (2 * m^2) * sum(F_i − F_j)`.
 #' A lower energy score is better: it indicates less deviation from the data.
@@ -721,13 +722,22 @@ models <-
   tibble(name = factor(c("null", "GAM only", "GAM with AR(1)", "GAM with VAR(1)",
                          "AR(1) and DF(2)", "GAM with AR(1) and DF(2)",
                          "GAM with AR(1) and b-splines"),
-                       levels = c("null", "AR(1) and DF(4)", "GAM only",
+                       levels = c("null", "AR(1) and DF(2)", "GAM only",
                                   "GAM with AR(1)", "GAM with VAR(1)",
-                                  "GAM with AR(1) and DF(4)",
+                                  "GAM with AR(1) and DF(2)",
                                   "GAM with AR(1) and b-splines")),
          model = list(m_null, m_gam, m_gam_ar1, m_gam_var1,
                       m_df, m_gam_df, m_gam_ar1_bs),
-         forecast = map(model, function(.m) forecast(.m)),
+         forecast = map2(model, name, function(.m, .n) {
+           out <- forecast(.m)
+           if (.n == "GAM with VAR(1)") {
+             for (.core in paste("Core", 1:4)) {
+               sm <- filter(d_train, core == .core)$sample_mean[1]
+               ssd <- filter(d_train, core == .core)$sample_sd[1]
+               out$forecasts[[.core]] <- exp(out$forecasts[[.core]] * ssd + sm)
+             }
+           }
+           }),
          scores = map(forecast, function(.f) {
            tibble(
              year = unique(d_test$year),
