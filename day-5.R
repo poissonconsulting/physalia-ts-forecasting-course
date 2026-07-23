@@ -15,6 +15,15 @@ library('tsibble') #' to read in quarters correctly for `tourism_tbl_ts` below
 #'   - importance of fine-scale data in (movement) time series:
 #'     https://www.science.org/doi/10.1126/science.abg1780
 
+#' tapir movement data and NDVI ----
+#' from https://link.springer.com/article/10.1186/s40462-025-00546-5
+tapir_hr <- readRDS(url("https://github.com/QuantitativeEcologyLab/hr-resource-stoch/raw/refs/heads/main/data/anna-hr-ndvi-data.rds"))
+tapir_hr
+
+# question: how do mean and variance in NDVI (proxy for forage) affect:
+# - amoount of space used by the tapir
+# - uncertainty/variance in the space used by the tapir (hint: HR ~ Gamma())
+
 # hourly pedestrian counts ----
 ped <- timeSeriesDataSets::pedestrian_tbl_ts %>%
   rename_with(tolower) %>%
